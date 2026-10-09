@@ -56,7 +56,9 @@ public class WidgetSchematicBrowser extends WidgetFileBrowserBase
     @Override
     protected int getBrowserWidthForTotalWidth(int width)
     {
-        return super.getBrowserWidthForTotalWidth(width) - this.infoWidth;
+        // At small GUI sizes a permanent preview leaves no space for filenames.
+        // Quick Place's next step still shows the selected file's metadata.
+        return super.getBrowserWidthForTotalWidth(width) - (width >= 460 ? this.infoWidth : 0);
     }
 
     @Override
@@ -87,9 +89,10 @@ public class WidgetSchematicBrowser extends WidgetFileBrowserBase
 
     protected void drawSelectedSchematicInfo(GuiContext ctx, @Nullable DirectoryEntry entry)
     {
+        if (this.totalWidth < 460) return;
         int x = this.posX + this.totalWidth - this.infoWidth;
         int y = this.posY;
-        int height = Math.min(this.infoHeight, this.parent.getMaxInfoHeight());
+        int height = Math.min(this.infoHeight, Math.min(this.parent.getMaxInfoHeight(), this.parent.getScreenHeight() - this.posY - 48));
 
         RenderUtils.drawOutlinedBox(ctx, x, y, this.infoWidth, height, 0xA0000000, COLOR_HORIZONTAL_BAR);
 

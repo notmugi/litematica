@@ -21,7 +21,6 @@ import fi.dy.masa.litematica.config.Hotkeys;
 import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.data.EntityDataManager;
 import fi.dy.masa.litematica.gui.*;
-import fi.dy.masa.litematica.gui.GuiConfigs.ConfigGuiTab;
 import fi.dy.masa.litematica.materials.MaterialListBase;
 import fi.dy.masa.litematica.schematic.placement.PlacementManagerDaemonHandler;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
@@ -206,6 +205,7 @@ public class KeyCallbacks
         @Override
         public boolean onKeyAction(KeyAction action, IKeybind key)
         {
+            if (fi.dy.masa.litematica.util.UxSafety.inputBlocked()) return true;
             if (this.mc.player == null || this.mc.level == null)
             {
                 return false;
@@ -324,14 +324,14 @@ public class KeyCallbacks
             }
             else if (key == Hotkeys.OPEN_GUI_LOADED_SCHEMATICS.getKeybind())
             {
-                GuiBase.openGui(new GuiSchematicLoadedList());
+                GuiBase.openGui(new GuiGhosts(true));
                 return true;
             }
             else if (key == Hotkeys.OPEN_GUI_SELECTION_MANAGER.getKeybind())
             {
                 if (DataManager.getSchematicProjectsManager().hasProjectOpen() == false)
                 {
-                    GuiBase.openGui(new GuiAreaSelectionManager());
+                    GuiSaveSelection.open(null);
                 }
                 else
                 {
@@ -342,7 +342,7 @@ public class KeyCallbacks
             }
             else if (key == Hotkeys.OPEN_GUI_SCHEMATIC_PLACEMENTS.getKeybind())
             {
-                GuiBase.openGui(new GuiSchematicPlacementsList());
+                GuiBase.openGui(new GuiGhosts());
                 return true;
             }
             else if (key == Hotkeys.OPEN_GUI_SCHEMATIC_PROJECTS.getKeybind())
@@ -352,14 +352,7 @@ public class KeyCallbacks
             }
             else if (key == Hotkeys.OPEN_GUI_SETTINGS.getKeybind())
             {
-                if (DataManager.getConfigGuiTab() == ConfigGuiTab.RENDER_LAYERS)
-                {
-                    GuiBase.openGui(new GuiRenderLayer());
-                }
-                else
-                {
-                    GuiBase.openGui(new GuiConfigs());
-                }
+                GuiBase.openGui(new GuiConfigs());
 
                 return true;
             }
@@ -369,16 +362,7 @@ public class KeyCallbacks
 
                 if (schematicPlacement != null)
                 {
-                    SubRegionPlacement placement = schematicPlacement.getSelectedSubRegionPlacement();
-
-                    if (placement != null)
-                    {
-                        GuiBase.openGui(new GuiSubRegionConfiguration(schematicPlacement, placement));
-                    }
-                    else
-                    {
-                        GuiBase.openGui(new GuiPlacementConfiguration(schematicPlacement));
-                    }
+                    GuiBase.openGui(new GuiPlacementConfiguration(schematicPlacement));
                 }
                 else
                 {
@@ -431,16 +415,7 @@ public class KeyCallbacks
             }
             else if (key == Hotkeys.OPEN_GUI_AREA_SETTINGS.getKeybind())
             {
-                SelectionManager manager = DataManager.getSelectionManager();
-
-                if (manager.getCurrentSelection() != null)
-                {
-                    manager.openEditGui(null);
-                }
-                else
-                {
-                    InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.no_area_selected");
-                }
+                GuiSaveSelection.open(null);
 
                 return true;
             }
@@ -602,6 +577,7 @@ public class KeyCallbacks
         @Override
         public boolean onKeyAction(KeyAction action, IKeybind key)
         {
+            if (fi.dy.masa.litematica.util.UxSafety.inputBlocked()) return true;
             ToolMode mode = DataManager.getToolMode();
 
             if (key == Hotkeys.ADD_SELECTION_BOX.getKeybind())

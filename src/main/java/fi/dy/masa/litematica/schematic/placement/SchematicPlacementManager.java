@@ -1095,6 +1095,40 @@ public class SchematicPlacementManager
 
     public void pastePlacementToWorld(final SchematicPlacement schematicPlacement, boolean changedBlocksOnly, boolean printMessage, Minecraft mc)
     {
+        // Command-file export already has its own confirmation; it does not edit the world.
+        if (schematicPlacement == null || mc.player == null || !EntityUtils.isCreativeMode(mc.player) ||
+            !schematicPlacement.isEnabled() || Configs.Generic.PASTE_TO_MCFUNCTION.getBooleanValue())
+        {
+            this.pastePlacementToWorldConfirmed(schematicPlacement, changedBlocksOnly, printMessage, mc);
+            return;
+        }
+        fi.dy.masa.litematica.util.UxSafety.confirm(true, "litematica.gui.ux.safety.paste",
+                () -> fi.dy.masa.litematica.util.UxSafety.placementState(schematicPlacement),
+                () -> this.getAllSchematicsPlacements().contains(schematicPlacement),
+                () -> this.pastePlacementToWorldConfirmed(schematicPlacement, changedBlocksOnly, printMessage, mc),
+                schematicPlacement.getName(), schematicPlacement.getEnabledRelativeSubRegionPlacements().size(),
+                fi.dy.masa.litematica.util.UxSafety.pasteSettings());
+    }
+
+    /** Operation-local continuation for an already confirmed project delete-and-paste. */
+    @Nullable
+    public Runnable prepareProjectPaste(SchematicPlacement placement, Minecraft mc)
+    {
+        if (mc.level == null || mc.player == null || !EntityUtils.isCreativeMode(mc.player) ||
+            placement == null || !placement.isEnabled() || !this.schematicPlacements.contains(placement) ||
+            Configs.Generic.PASTE_TO_MCFUNCTION.getBooleanValue()) return null;
+        Object target = fi.dy.masa.litematica.util.UxSafety.placementState(placement);
+        var ticket = new fi.dy.masa.litematica.util.UxSafety.Ticket();
+        var continuation = fi.dy.masa.litematica.util.UxSafety.checkedContinuation(() -> {
+            if (ticket.accept(true, () -> this.schematicPlacements.contains(placement) && placement.isEnabled() &&
+                    java.util.Objects.equals(target, fi.dy.masa.litematica.util.UxSafety.placementState(placement))))
+                this.pastePlacementToWorldConfirmed(placement, false, false, mc);
+        });
+        return continuation::onTaskCompleted;
+    }
+
+    private void pastePlacementToWorldConfirmed(final SchematicPlacement schematicPlacement, boolean changedBlocksOnly, boolean printMessage, Minecraft mc)
+    {
         if (mc.player != null && EntityUtils.isCreativeMode(mc.player))
         {
             if (schematicPlacement != null)

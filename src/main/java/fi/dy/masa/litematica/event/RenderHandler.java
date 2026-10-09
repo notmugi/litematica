@@ -73,6 +73,13 @@ public class RenderHandler implements IRenderer
     @Override
     public void onExtractGuiOverlayPost(GuiContext ctx, float partialTicks, ProfilerFiller profiler)
     {
+        // Keep the status visible when previews are hidden, so turning rendering
+        // off does not also hide the explanation of why the preview disappeared.
+        if (ctx.mc().player != null && GuiUtils.getCurrentScreen() == null && !ctx.mc().gui.hud.isHidden())
+        {
+            ToolHud.getInstance().renderHud(ctx);
+        }
+
         if (Configs.Visuals.ENABLE_RENDERING.getBooleanValue() && ctx.mc().player != null)
         {
             profiler.push("overlay_hud");
@@ -83,7 +90,6 @@ public class RenderHandler implements IRenderer
             {
                 if (ctx.mc().gui.hud.isHidden() == false)
                 {
-                    ToolHud.getInstance().renderHud(ctx);
                     profiler.popPush("overlay_hover_info");
                     OverlayRenderer.getInstance().renderHoverInfo(ctx, profiler);
                 }

@@ -85,6 +85,8 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         {
             this.addLabel(20, 30, 120, 12, 0xFFFFAA00, StringUtils.translate("litematica.error.area_editor.no_selection"));
         }
+
+        this.addNavigationButtons();
     }
 
     protected void createSelectionEditFields()
@@ -147,30 +149,55 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
 
         this.addRenderingDisabledWarning(120, y + 2);
 
-        y = this.getScreenHeight() - 26;
+        return y;
+    }
 
-        ButtonListenerChangeMenu.ButtonType type = ButtonListenerChangeMenu.ButtonType.AREA_SELECTION_BROWSER;
-        String label = StringUtils.translate(type.getLabelKey());
-        ButtonGeneric button = new ButtonGeneric(x, y, -1, 20, label, type.getIcon());
-
-        if (DataManager.getSchematicProjectsManager().hasProjectOpen())
+    protected void addNavigationButtons()
+    {
+        int x = 12;
+        int y = this.getScreenHeight() - 26;
+        ButtonGeneric button;
+        if (!(this instanceof GuiAreaSelectionEditorSubRegion))
         {
-            button.setEnabled(false);
-            button.setHoverStrings("litematica.gui.button.hover.schematic_projects.area_browser_disabled_currently_in_projects_mode");
+            ButtonListenerChangeMenu.ButtonType type = ButtonListenerChangeMenu.ButtonType.AREA_SELECTION_BROWSER;
+            button = new ButtonGeneric(x, y, -1, 20, StringUtils.translate(type.getLabelKey()), type.getIcon());
+
+            if (DataManager.getSchematicProjectsManager().hasProjectOpen())
+            {
+                button.setEnabled(false);
+                button.setHoverStrings("litematica.gui.button.hover.schematic_projects.area_browser_disabled_currently_in_projects_mode");
+            }
+
+            x += this.addButton(button, (b, mouseButton) -> this.openSelectionBrowser()).getWidth() + 4;
         }
 
-        x += this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent())).getWidth() + 4;
+        if (!(this instanceof GuiAreaSelectionEditorSimple) && this.selection != null)
+        {
+            this.createButton(x, y, -1, ButtonListener.Type.ANALYZE_AREA);
+        }
 
-        this.createButton(x, y, -1, ButtonListener.Type.ANALYZE_AREA);
-
-        type = ButtonListenerChangeMenu.ButtonType.MAIN_MENU;
-        label = StringUtils.translate(type.getLabelKey());
+        String label = StringUtils.translate("litematica.gui.ux.back");
         int buttonWidth = this.getStringWidth(label) + 10;
-        x = this.getScreenWidth() - buttonWidth - 10;
-        button = new ButtonGeneric(x, y, buttonWidth, 20, label);
-        this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent()));
+        button = new ButtonGeneric(this.getScreenWidth() - buttonWidth - 10, y, buttonWidth, 20, label);
+        this.addButton(button, (b, mouseButton) -> this.closeGui(true));
+    }
 
-        return y;
+    protected void openSelectionBrowser()
+    {
+        if (!DataManager.getSchematicProjectsManager().hasProjectOpen())
+        {
+            // Replace the editor step: returning from the browser must not revive a stale selection editor.
+            if (this.getParent() instanceof GuiAreaSelectionManager browser)
+            {
+                GuiBase.openGui(browser);
+            }
+            else
+            {
+                GuiAreaSelectionManager browser = new GuiAreaSelectionManager();
+                browser.setParent(this.getParent());
+                GuiBase.openGui(browser);
+            }
+        }
     }
 
     protected void addRenderingDisabledWarning(int x, int y)
@@ -253,6 +280,8 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
 
         y += 2;
         BlockPos pos = corner == Corner.NONE ? this.selection.getEffectiveOrigin() : this.getBox().getPosition(corner);
+        boolean unset = pos == null;
+        if (unset) pos = BlockPos.ZERO;
         String text = "";
         ButtonListener.Type type = null;
 
@@ -274,7 +303,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
 
         GuiTextFieldInteger textField = new GuiTextFieldInteger(x + offset, y, width, 16, this.font);
         TextFieldListener listener = new TextFieldListener(coordType, corner, this);
-        textField.setValueWrapper(text);
+        textField.setValueWrapper(unset ? "" : text);
         this.addTextField(textField, listener);
 
         this.createCoordinateButton(x + offset + width + 4, y, corner, coordType, type);
@@ -324,6 +353,11 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         ButtonGeneric button = new ButtonGeneric(x, y, width, 20, label);
         ButtonListener listener = new ButtonListener(type, corner, null, this);
         this.addButton(button, listener);
+
+        if (type == ButtonListener.Type.CREATE_SCHEMATIC)
+        {
+            button.setEnabled(this.mc.player != null && this.selection != null && !PositionUtils.getValidBoxes(this.selection).isEmpty());
+        }
 
         if (type == ButtonListener.Type.CREATE_SCHEMATIC && projectsMode == false)
         {
@@ -458,20 +492,9 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
 
                 case CHANGE_SELECTION_MODE:
                     SelectionManager manager = DataManager.getSelectionManager();
-                    SelectionMode newMode = (SelectionMode) manager.getSelectionMode().cycle(true);
-
-                    if (newMode == SelectionMode.NORMAL && manager.hasNormalSelection() == false)
-                    {
-                        this.parent.addMessage(MessageType.WARNING, "litematica.error.area_editor.switch_mode.no_selection");
-                    }
-                    else
-                    {
-                        manager.switchSelectionMode();
-                        manager.openEditGui(null);
-                        return;
-                    }
-
-                    break;
+                    manager.switchSelectionMode();
+                    GuiSaveSelection.open(this.parent.getParent());
+                    return;
 
                 case CHANGE_CORNER_MODE:
                     Configs.Generic.SELECTION_CORNERS_MODE.setOptionListValue(Configs.Generic.SELECTION_CORNERS_MODE.getOptionListValue().cycle(false));

@@ -5,7 +5,6 @@ import java.util.List;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import fi.dy.masa.malilib.render.GuiContext;
-import fi.dy.masa.litematica.gui.GuiAreaSelectionEditorNormal;
 import fi.dy.masa.litematica.selection.AreaSelection;
 import fi.dy.masa.litematica.selection.SelectionManager;
 import fi.dy.masa.litematica.util.FileType;
@@ -21,7 +20,6 @@ import fi.dy.masa.malilib.gui.widgets.WidgetFileBrowserBase.DirectoryEntry;
 import fi.dy.masa.malilib.gui.widgets.WidgetFileBrowserBase.DirectoryEntryType;
 import fi.dy.masa.malilib.interfaces.IStringConsumerFeedback;
 import fi.dy.masa.malilib.render.RenderUtils;
-import fi.dy.masa.malilib.util.GuiUtils;
 import fi.dy.masa.malilib.util.StringUtils;
 
 public class WidgetAreaSelectionEntry extends WidgetDirectoryEntry
@@ -171,15 +169,7 @@ public class WidgetAreaSelectionEntry extends WidgetDirectoryEntry
 			}
 			else if (this.type == ButtonType.CONFIGURE)
 			{
-				AreaSelection selection = this.selectionManager.getOrLoadSelection(selectionId);
-
-				if (selection != null)
-				{
-					GuiAreaSelectionEditorNormal gui = new GuiAreaSelectionEditorNormal(selection);
-					gui.setParent(GuiUtils.getCurrentScreen());
-					gui.setSelectionId(selectionId);
-					GuiBase.openGui(gui);
-				}
+				this.widget.parent.getSelectionManagerGui().openSelectionEditor(selectionId);
 			}
 
 			this.widget.parent.refreshEntries();

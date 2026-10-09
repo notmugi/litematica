@@ -19,6 +19,7 @@ import fi.dy.masa.malilib.render.RenderUtils;
 import fi.dy.masa.malilib.util.StringUtils;
 import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.gui.GuiPlacementConfiguration;
+import fi.dy.masa.litematica.gui.PlacementUiContext;
 import fi.dy.masa.litematica.gui.Icons;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacementManager;
@@ -28,6 +29,7 @@ public class WidgetSchematicPlacement extends WidgetListEntryBase<SchematicPlace
     public final SchematicPlacementManager manager;
     public final WidgetListSchematicPlacements parent;
     public final SchematicPlacement placement;
+    private final PlacementUiContext context;
     public final boolean isOdd;
     public int buttonsStartX;
 
@@ -38,6 +40,7 @@ public class WidgetSchematicPlacement extends WidgetListEntryBase<SchematicPlace
 
         this.parent = parent;
         this.placement = placement;
+        this.context = new PlacementUiContext(placement);
         this.isOdd = isOdd;
         this.manager = DataManager.getSchematicPlacementManager();
 
@@ -97,7 +100,7 @@ public class WidgetSchematicPlacement extends WidgetListEntryBase<SchematicPlace
 
         String name = this.placement.getName();
         String pre = this.placement.isEnabled() ? GuiBase.TXT_GREEN : GuiBase.TXT_RED;
-        this.drawString(ctx, this.x + 20, this.y + 7, 0xFFFFFFFF, pre + name);
+        this.drawString(ctx, this.x + 20, this.y + 7, 0xFFFFFFFF, pre + this.textRenderer.plainSubstrByWidth(name, Math.max(1, this.buttonsStartX - this.x - 48)));
 
         Icons icon;
 
@@ -167,6 +170,7 @@ public class WidgetSchematicPlacement extends WidgetListEntryBase<SchematicPlace
 		@Override
 		public void actionPerformedWithButton(ButtonBase button, int mouseButton)
 		{
+            if (!this.widget.context.valid(this.widget.parent.getParentGui())) return;
 			if (this.type == ButtonType.CONFIGURE)
 			{
 				GuiPlacementConfiguration gui = new GuiPlacementConfiguration(this.widget.placement);

@@ -11,6 +11,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import fi.dy.masa.litematica.data.EntityDataManager;
 import fi.dy.masa.litematica.config.Configs;
+import fi.dy.masa.litematica.config.Hotkeys;
+import fi.dy.masa.litematica.materials.MaterialListBase;
+import fi.dy.masa.malilib.util.GuiUtils;
+import fi.dy.masa.malilib.util.position.LayerRange;
 import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import fi.dy.masa.litematica.schematic.placement.SubRegionPlacement;
@@ -86,6 +90,19 @@ public class ToolHud extends InfoHud
     @Override
     protected void updateHudText()
     {
+        // Only while actually usable: disabled tool or empty hands means no summary.
+        if (Configs.Generic.UX_STATUS_HUD.getBooleanValue() && this.hasEnabledTool())
+        {
+            this.addStatusSummary();
+        }
+
+        // The legacy detailed tool HUD remains available while holding the tool.
+        // With the new summary disabled, preserve the old render-toggle behavior.
+        if (!Configs.Visuals.ENABLE_RENDERING.getBooleanValue())
+        {
+            return;
+        }
+
         String str;
         String green = GuiBase.TXT_GREEN;
         String rst = GuiBase.TXT_RST;
@@ -349,6 +366,67 @@ public class ToolHud extends InfoHud
             lines.add(String.format("%s [%s%d%s/%s%d%s]: %s%s%s", str, green, mode.ordinal() + 1, white,
                     green, ToolMode.values().length, white, green, modeName, rst));
         }
+    }
+
+    private void addStatusSummary()
+    {
+        String key = Hotkeys.OPEN_GUI_MAIN_MENU.getKeybind().getKeysDisplayString();
+        if (key.isEmpty()) key = StringUtils.translate("litematica.ux.hud.unbound");
+        String state;
+        if (!Configs.Visuals.ENABLE_RENDERING.getBooleanValue())
+        {
+            state = StringUtils.translate("litematica.ux.hud.rendering_off");
+        }
+        else if (!Configs.Generic.TOOL_ITEM_ENABLED.getBooleanValue())
+        {
+            state = StringUtils.translate("litematica.ux.hud.tool_off");
+        }
+        else if (this.hasEnabledTool())
+        {
+            state = StringUtils.translate("litematica.ux.hud.tool_ready");
+        }
+        else
+        {
+            ItemStack tool = DataManager.getInstance().hasToolItemComponents()
+                    ? DataManager.getInstance().getToolItemComponents() : DataManager.getToolItem();
+            state = StringUtils.translate("litematica.ux.hud.hold_tool", tool.getHoverName().getString());
+        }
+        this.addSummaryLine(StringUtils.translate("litematica.ux.hud.mode", key, DataManager.getToolMode().getName(), state));
+
+        SchematicPlacement placement = DataManager.getSchematicPlacementManager().getSelectedSchematicPlacement();
+        LayerRange range = DataManager.getRenderLayerRange();
+        String layer = range.getLayerMode() == fi.dy.masa.malilib.util.LayerMode.ALL
+                ? range.getLayerMode().getDisplayName()
+                : range.getAxis().name() + " " + range.getCurrentLayerString();
+        if (placement != null)
+        {
+            String name = placement.getName();
+            if (!placement.isEnabled()) name += " " + StringUtils.translate("litematica.ux.hud.placement_hidden");
+            this.addSummaryLine(StringUtils.translate("litematica.ux.hud.placement", name, layer));
+        }
+        else
+        {
+            this.addSummaryLine(StringUtils.translate("litematica.ux.hud.no_placement", layer));
+        }
+        if (Configs.Visuals.ENABLE_RENDERING.getBooleanValue() &&
+                (!Configs.Visuals.ENABLE_SCHEMATIC_RENDERING.getBooleanValue() ||
+                 !Configs.Visuals.ENABLE_SCHEMATIC_BLOCKS.getBooleanValue()))
+        {
+            this.addSummaryLine(StringUtils.translate("litematica.ux.hud.ghosts_hidden"));
+        }
+        MaterialListBase materials = DataManager.getMaterialList();
+        if (materials != null && materials.getHudRenderer().getShouldRenderCustom())
+        {
+            // Cached result only: never rescan the world/inventory on a render frame.
+            this.addSummaryLine(StringUtils.translate("litematica.ux.hud.materials",
+                    materials.getName(), materials.getCountMissing()));
+        }
+    }
+
+    private void addSummaryLine(String text)
+    {
+        int width = Math.max(60, (int) (GuiUtils.getScaledWindowWidth() / this.getScaleFactor()) - 2 * this.getOffsetX() - 12);
+        this.lineList.add(this.mc.font.plainSubstrByWidth(text, width));
     }
 
     protected String getBlockString(BlockState state)

@@ -164,6 +164,7 @@ public class Box
     public int getCoordinate(Corner corner, CoordinateType type)
     {
         BlockPos pos = this.getPosition(corner);
+        if (pos == null) return 0;
 
 	    return switch (type)
 	    {
@@ -188,7 +189,7 @@ public class Box
     public void setCoordinate(int value, Corner corner, CoordinateType type)
     {
         BlockPos pos = this.getPosition(corner);
-        pos = PositionUtils.getModifiedPosition(pos, value, type);
+        pos = PositionUtils.getModifiedPosition(pos != null ? pos : BlockPos.ZERO, value, type);
         this.setPosition(pos, corner);
     }
 
@@ -206,25 +207,11 @@ public class Box
     {
         if (JsonUtils.hasString(obj, "name"))
         {
-            BlockPos pos1 = JsonUtils.getBlockPosOrDefault(obj, "pos1", BlockPos.ZERO);
-            BlockPos pos2 = JsonUtils.getBlockPosOrDefault(obj, "pos2", BlockPos.ZERO);
-
+            BlockPos pos1 = JsonUtils.getBlockPos(obj, "pos1");
+            BlockPos pos2 = JsonUtils.getBlockPos(obj, "pos2");
             if (pos1 != null || pos2 != null)
             {
-                Box box = new Box();
-                box.setName(obj.get("name").getAsString());
-
-                if (pos1 != null)
-                {
-                    box.setPos1(pos1);
-                }
-
-                if (pos2 != null)
-                {
-                    box.setPos2(pos2);
-                }
-
-                return box;
+                return new Box(pos1, pos2, obj.get("name").getAsString());
             }
         }
 

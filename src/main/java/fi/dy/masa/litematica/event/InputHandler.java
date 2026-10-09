@@ -65,6 +65,7 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
     @Override
     public boolean onKeyInput(KeyEvent input, boolean eventKeyState)
     {
+        if (!eventKeyState) UxSafety.released(input.key());
         if (eventKeyState)
         {
             Minecraft mc = Minecraft.getInstance();
@@ -89,6 +90,7 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
     @Override
     public boolean onMouseClick(MouseButtonEvent click, boolean eventButtonState)
     {
+        if (!eventButtonState) UxSafety.released(click.button() - 100);
         Minecraft mc = Minecraft.getInstance();
 
         // Tool enabled, and not in a GUI
@@ -124,6 +126,7 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
 
     private boolean handleMouseScroll(double dWheel, Minecraft mc)
     {
+        if (UxSafety.inputBlocked()) return true;
         boolean toolEnabled = Configs.Visuals.ENABLE_RENDERING.getBooleanValue() && Configs.Generic.TOOL_ITEM_ENABLED.getBooleanValue();
 
         if (toolEnabled == false || EntityUtils.hasToolItem(mc.player) == false)
@@ -252,7 +255,8 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
 
     private boolean handleAttackKey(Minecraft mc)
     {
-        if (mc.player != null && DataManager.getToolMode() == ToolMode.REBUILD && KeybindMulti.getTriggeredCount() == 0)
+        if (UxSafety.inputBlocked()) return true;
+        if (fi.dy.masa.malilib.util.GuiUtils.getCurrentScreen() == null && mc.player != null && DataManager.getToolMode() == ToolMode.REBUILD && KeybindMulti.getTriggeredCount() == 0)
         {
             if (Hotkeys.SCHEMATIC_EDIT_BREAK_DIRECTION.getKeybind().isKeybindHeld())
             {
@@ -277,7 +281,8 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
 
     private boolean handleUseKey(Minecraft mc)
     {
-        if (mc.player != null)
+        if (UxSafety.inputBlocked()) return true;
+        if (fi.dy.masa.malilib.util.GuiUtils.getCurrentScreen() == null && mc.player != null)
         {
             if (DataManager.getToolMode() == ToolMode.REBUILD)
             {

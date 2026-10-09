@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import com.google.common.collect.ImmutableList;
 import fi.dy.masa.litematica.data.DataManager;
-import fi.dy.masa.litematica.gui.GuiSchematicPlacementsList;
+import fi.dy.masa.litematica.gui.GuiGhosts;
 import fi.dy.masa.litematica.gui.Icons;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import fi.dy.masa.malilib.gui.LeftRight;
@@ -14,9 +14,9 @@ import fi.dy.masa.malilib.util.FileUtils;
 
 public class WidgetListSchematicPlacements extends WidgetListBase<SchematicPlacement, WidgetSchematicPlacement>
 {
-    public final GuiSchematicPlacementsList parent;
+    public final GuiGhosts parent;
 
-    public WidgetListSchematicPlacements(int x, int y, int width, int height, GuiSchematicPlacementsList parent)
+    public WidgetListSchematicPlacements(int x, int y, int width, int height, GuiGhosts parent)
     {
         super(x, y, width, height, parent);
 
@@ -26,7 +26,7 @@ public class WidgetListSchematicPlacements extends WidgetListBase<SchematicPlace
         this.browserEntriesOffsetY = this.widgetSearchBar.getHeight() + 3;
     }
 
-    public GuiSchematicPlacementsList getParentGui()
+    public GuiGhosts getParentGui()
     {
         return this.parent;
     }

@@ -26,14 +26,28 @@ import fi.dy.masa.litematica.util.PositionUtils;
 public class GuiSubRegionConfiguration extends GuiBase
 {
     private final SchematicPlacement schematicPlacement;
+    private final PlacementUiContext context;
     private final SubRegionPlacement placement;
     private ButtonGeneric buttonResetPlacement;
 
     public GuiSubRegionConfiguration(SchematicPlacement schematicPlacement, SubRegionPlacement placement)
     {
         this.schematicPlacement = schematicPlacement;
+        this.context = new PlacementUiContext(schematicPlacement);
         this.placement = placement;
         this.title = StringUtils.translate("litematica.gui.title.configure_schematic_sub_region");
+    }
+
+    private boolean valid()
+    {
+        if (!this.context.valid(this)) return false;
+        // Reset-all replaces the region objects, so a child screen must not edit a stale one.
+        if (!this.schematicPlacement.getAllSubRegionsPlacements().contains(this.placement))
+        {
+            this.addMessage(MessageType.ERROR, "litematica.gui.quick_place.removed");
+            return false;
+        }
+        return true;
     }
 
     @Override
@@ -134,7 +148,7 @@ public class GuiSubRegionConfiguration extends GuiBase
         x = x + offset + width + 20;
         WidgetCheckBox cb = new WidgetCheckBox(x, y + 3, Icons.CHECKBOX_UNSELECTED, Icons.CHECKBOX_SELECTED, "", hover);
         cb.setChecked(this.placement.isCoordinateLocked(type), false);
-        cb.setListener(new CoordinateLockListener(type, this.placement));
+        cb.setListener(new CoordinateLockListener(type, this.placement, this));
         this.addWidget(cb);
     }
 
@@ -161,7 +175,7 @@ public class GuiSubRegionConfiguration extends GuiBase
                 String hover = StringUtils.translate("litematica.gui.button.schematic_placement.hover.rendering", str);
 
                 this.addButton(new ButtonGeneric(x, y, width, 20, label, hover), listener);
-                break;
+                return;
             }
 
             case NUDGE_COORD_X:
@@ -216,13 +230,13 @@ public class GuiSubRegionConfiguration extends GuiBase
 
     private static class ButtonListener implements IButtonActionListener
     {
-        private final GuiBase parent;
+        private final GuiSubRegionConfiguration parent;
         private final SchematicPlacement schematicPlacement;
         private final SubRegionPlacement placement;
         private final Type type;
         private final String subRegionName;
 
-        public ButtonListener(Type type, SchematicPlacement schematicPlacement, SubRegionPlacement placement, GuiBase parent)
+        public ButtonListener(Type type, SchematicPlacement schematicPlacement, SubRegionPlacement placement, GuiSubRegionConfiguration parent)
         {
             this.type = type;
             this.schematicPlacement = schematicPlacement;
@@ -234,7 +248,7 @@ public class GuiSubRegionConfiguration extends GuiBase
         @Override
         public void actionPerformedWithButton(ButtonBase button, int mouseButton)
         {
-            if (this.parent.mc.player == null) return;
+            if (!this.parent.valid()) return;
             int amount = mouseButton == 1 ? -1 : 1;
             if (GuiBase.isShiftDown()) { amount *= 8; }
             if (GuiBase.isAltDown()) { amount *= 4; }
@@ -249,8 +263,20 @@ public class GuiSubRegionConfiguration extends GuiBase
             switch (this.type)
             {
                 case PLACEMENT_CONFIGURATION:
-                    GuiBase.openGui(new GuiPlacementConfiguration(this.schematicPlacement));
-                    break;
+                {
+                    if (this.parent.getParent() instanceof GuiPlacementConfiguration editor &&
+                        editor.getSchematicPlacement() == this.schematicPlacement)
+                    {
+                        GuiBase.openGui(editor);
+                    }
+                    else
+                    {
+                        GuiPlacementConfiguration editor = new GuiPlacementConfiguration(this.schematicPlacement);
+                        editor.setParent(this.parent.getParent());
+                        GuiBase.openGui(editor);
+                    }
+                    return;
+                }
 
                 case ROTATE:
                 {
@@ -357,6 +383,7 @@ public class GuiSubRegionConfiguration extends GuiBase
         @Override
         public boolean onTextChange(GuiTextFieldInteger textField)
         {
+            if (!this.parent.valid()) return false;
             try
             {
                 int value = Integer.parseInt(textField.getValueWrapper());
@@ -382,13 +409,13 @@ public class GuiSubRegionConfiguration extends GuiBase
         }
     }
 
-    private record CoordinateLockListener(CoordinateType type, SubRegionPlacement placement)
+    private record CoordinateLockListener(CoordinateType type, SubRegionPlacement placement, GuiSubRegionConfiguration parent)
             implements ISelectionListener<WidgetCheckBox>
     {
         @Override
         public void onSelectionChange(WidgetCheckBox entry)
         {
-            if (entry == null) { return; }
+            if (entry == null || !this.parent.valid()) { return; }
             this.placement.setCoordinateLocked(this.type, entry.isChecked());
         }
     }

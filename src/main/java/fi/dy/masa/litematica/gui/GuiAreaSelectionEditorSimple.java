@@ -103,7 +103,8 @@ public class GuiAreaSelectionEditorSimple extends GuiAreaSelectionEditorNormal
         {
             BlockPos pos1 = this.getBox().getPos1();
             BlockPos pos2 = this.getBox().getPos2();
-            BlockPos origin = PositionUtils.getMinCorner(pos1, pos2);
+            if (pos1 == null && pos2 == null) return;
+            BlockPos origin = pos1 == null ? pos2 : pos2 == null ? pos1 : PositionUtils.getMinCorner(pos1, pos2);
             this.selection.setExplicitOrigin(origin);
         }
     }

@@ -1,83 +1,128 @@
 package fi.dy.masa.litematica.gui;
 
+import java.util.Locale;
 import javax.annotation.Nullable;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import fi.dy.masa.litematica.Reference;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.data.DataManager;
-import fi.dy.masa.litematica.selection.SelectionMode;
-import fi.dy.masa.litematica.tool.ToolMode;
+import fi.dy.masa.litematica.data.SchematicHolder;
+import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
+import fi.dy.masa.litematica.util.EntityUtils;
 import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
+import fi.dy.masa.malilib.gui.widgets.WidgetHoverInfo;
 import fi.dy.masa.malilib.util.StringUtils;
 
-public class GuiMainMenu extends GuiBase
+public class GuiMainMenu extends GuiUxBase
 {
+    private boolean welcomeShown;
+    private boolean advanced;
+
     public GuiMainMenu()
     {
-        String version = String.format("v%s", Reference.MOD_VERSION);
-        this.title = StringUtils.translate("litematica.gui.title.litematica_main_menu", version);
+        this.title = StringUtils.translate("litematica.gui.title.litematica_main_menu", "v" + Reference.MOD_VERSION);
     }
 
     @Override
     public void initGui()
     {
         super.initGui();
-
-        int x = 12;
-        int y = 30;
-        int width = this.getButtonWidth();
-
-        this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.SCHEMATIC_PLACEMENTS);
-        y += 22;
-        this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.LOADED_SCHEMATICS);
-        y += 22;
-        this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.LOAD_SCHEMATICS);
-        y += 44;
-
-        this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.AREA_EDITOR);
-        y += 22;
-        this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.AREA_SELECTION_BROWSER);
-        y += 22;
-
-        SelectionMode mode = DataManager.getSelectionManager().getSelectionMode();
-        String label = StringUtils.translate("litematica.gui.button.area_selection_mode", mode.getDisplayName());
-        ButtonGeneric button = new ButtonGeneric(x, y, width, 20, label);
-        this.addButton(button, new ButtonListenerCycleAreaMode(this));
-
-        label = StringUtils.translate("litematica.gui.button.tool_mode", DataManager.getToolMode().getName());
-        int width2 = this.getStringWidth(label) + 10;
-
-        y = this.getScreenHeight() - 26;
-        button = new ButtonGeneric(x, y, width2, 20, label);
-        this.addButton(button, new ButtonListenerCycleToolMode(this));
-
-        x += width + 20;
-        y = 30;
-        this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.CONFIGURATION);
-        y += 88;
-
-        this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.SCHEMATIC_MANAGER);
-        y += 22;
-
-        this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.TASK_MANAGER);
-
-        if (Configs.Generic.UNHIDE_SCHEMATIC_PROJECTS.getBooleanValue())
+        if (!this.welcomeShown && !Configs.Generic.UX_WELCOME_DISMISSED.getBooleanValue())
         {
-            y += 22;
-            this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.SCHEMATIC_PROJECTS_MANAGER);
+            this.welcomeShown = true;
+            openChild(this, new GuiUxHelp());
+            return;
         }
+
+        // ponytail: targets Minecraft's usual minimum 320x240 GUI; smaller forced scales need scrolling.
+        int x = 12;
+        int width = this.getScreenWidth() - 24;
+        boolean compact = this.getScreenHeight() < 280;
+        int y = 30;
+        SchematicPlacement placement = DataManager.getSchematicPlacementManager().getSelectedSchematicPlacement();
+        label(this, x, y, width, "litematica.gui.ux.home.counts",
+                SchematicHolder.getInstance().getAllSchematics().size(),
+                DataManager.getSchematicPlacementManager().getAllSchematicsPlacements().size());
+        y += 13;
+        label(this, x, y, width, "litematica.gui.ux.home.active_layer",
+                placement != null ? placement.getName() : StringUtils.translate("litematica.gui.ux.none"),
+                DataManager.getRenderLayerRange().getLayerMode().getDisplayName(),
+                DataManager.getRenderLayerRange().getCurrentLayerString());
+        y += 13;
+        String tool = toolName();
+        String held = StringUtils.translate(this.mc.player != null && EntityUtils.hasToolItem(this.mc.player)
+                ? "litematica.gui.ux.held" : "litematica.gui.ux.not_held");
+        if (!compact)
+        {
+            label(this, x, y, width, "litematica.gui.ux.home.tool_status", tool, held,
+                    onOff(Configs.Generic.EXECUTE_REQUIRE_TOOL.getBooleanValue()));
+            y += 16;
+        }
+        int half = (width - 6) / 2;
+        action(this, x, y, half, 20,
+                StringUtils.translate("litematica.gui.ux.home.mode", DataManager.getToolMode().getName()),
+                "litematica.gui.ux.home.mode.tip", () -> openChild(this, new GuiToolModePicker()));
+        action(this, x + half + 6, y, half, 20,
+                StringUtils.translate("litematica.gui.ux.home.tool", onOff(Configs.Generic.TOOL_ITEM_ENABLED.getBooleanValue())),
+                "litematica.gui.ux.home.tool.tip", () -> {
+                    Configs.Generic.TOOL_ITEM_ENABLED.setBooleanValue(!Configs.Generic.TOOL_ITEM_ENABLED.getBooleanValue());
+                    Configs.saveToFile();
+                    this.initGui();
+                });
+        y += 28;
+
+        int columns = width >= 356 ? 2 : 1;
+        if (this.advanced)
+        {
+            this.menuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.TASK_MANAGER);
+            if (Configs.Generic.UNHIDE_SCHEMATIC_PROJECTS.getBooleanValue())
+                this.menuButton(x, y + 26, width, ButtonListenerChangeMenu.ButtonType.SCHEMATIC_PROJECTS_MANAGER);
+
+        }
+        else
+        {
+            int rows = 4 / columns;
+            int cardHeight = Math.max(20, Math.min(42, (this.getScreenHeight() - 38 - y) / rows - 5));
+            int cardWidth = (width - (columns - 1) * 6) / columns;
+            String[] keys = { "place", "save", "build", "files" };
+            Runnable[] actions = {
+                () -> openChild(this, new GuiQuickPlace()),
+                () -> GuiSaveSelection.open(this),
+                () -> openChild(this, new GuiGhosts()),
+                () -> openChild(this, new GuiSchematicManager())
+            };
+            for (int i = 0; i < keys.length; ++i)
+            {
+                action(this, x + (i % columns) * (cardWidth + 6), y + (i / columns) * (cardHeight + 5),
+                        cardWidth, cardHeight, StringUtils.translate("litematica.gui.ux.home." + keys[i]),
+                        "litematica.gui.ux.home." + keys[i] + ".tip", actions[i])
+                        .subtitle(StringUtils.translate("litematica.gui.ux.home." + keys[i] + ".short"));
+            }
+        }
+
+        int footerWidth = (width - 12) / 3;
+        int bottom = this.getScreenHeight() - 26;
+        action(this, x, bottom, footerWidth, 20, StringUtils.translate("litematica.gui.ux.settings"),
+                "litematica.gui.ux.settings.tip", () -> {
+                    DataManager.setConfigGuiTab(GuiConfigs.ConfigGuiTab.GENERIC);
+                    openChild(this, new GuiConfigs());
+                });
+        action(this, x + (footerWidth + 6), bottom, footerWidth, 20, StringUtils.translate("litematica.gui.ux.help"),
+                "litematica.gui.ux.help.tip", () -> openChild(this, new GuiUxHelp()));
+        action(this, x + 2 * (footerWidth + 6), bottom, footerWidth, 20,
+                StringUtils.translate(this.advanced ? "litematica.gui.ux.home.tasks" : "litematica.gui.ux.home.advanced"),
+                "litematica.gui.ux.home.advanced.tip", () -> { this.advanced = !this.advanced; this.initGui(); });
     }
 
-    private void createChangeMenuButton(int x, int y, int width, ButtonListenerChangeMenu.ButtonType type)
+    private void menuButton(int x, int y, int width, ButtonListenerChangeMenu.ButtonType type)
     {
-        ButtonGeneric button = new ButtonGeneric(x, y, width, 20, type.getDisplayName(), type.getIcon());
-
-        if (type == ButtonListenerChangeMenu.ButtonType.AREA_SELECTION_BROWSER &&
-            DataManager.getSchematicProjectsManager().hasProjectOpen())
+        ButtonGeneric button = action(this, x, y, width, 20, type.getDisplayName(),
+                "litematica.gui.ux.advanced." + type.name().toLowerCase(Locale.ROOT),
+                () -> new ButtonListenerChangeMenu(type, this).actionPerformedWithButton(null, 0));
+        if (type == ButtonListenerChangeMenu.ButtonType.AREA_SELECTION_BROWSER && DataManager.getSchematicProjectsManager().hasProjectOpen())
         {
             button.setEnabled(false);
             button.setHoverStrings("litematica.gui.button.hover.schematic_projects.area_browser_disabled_currently_in_projects_mode");
@@ -86,26 +131,49 @@ public class GuiMainMenu extends GuiBase
         {
             button.setHoverStrings("litematica.gui.button.hover.schematic_projects.menu_warning");
         }
-
-        this.addButton(button, new ButtonListenerChangeMenu(type, this));
     }
 
-    private int getButtonWidth()
+    static void openChild(GuiBase parent, @Nullable GuiBase child)
     {
-        int width = 0;
-
-        for (ButtonListenerChangeMenu.ButtonType type : ButtonListenerChangeMenu.ButtonType.values())
+        if (child != null)
         {
-            width = Math.max(width, this.getStringWidth(type.getDisplayName()) + 30);
+            child.setParent(parent);
+            GuiBase.openGui(child);
         }
+    }
 
-        for (SelectionMode mode : SelectionMode.values())
+    static String toolName()
+    {
+        // Item components are bound only after entering a world in Minecraft 26.2.
+        if (net.minecraft.client.Minecraft.getInstance().level == null)
+            return Configs.Generic.TOOL_ITEM.getStringValue();
+        return (DataManager.getInstance().hasToolItemComponents()
+                ? DataManager.getInstance().getToolItemComponents() : DataManager.getToolItem()).getHoverName().getString();
+    }
+
+    static String onOff(boolean value)
+    {
+        return StringUtils.translate(value ? "litematica.gui.ux.on" : "litematica.gui.ux.off");
+    }
+
+    static UxButton action(GuiBase gui, int x, int y, int width, int height, String text, String hover, Runnable action)
+    {
+        UxButton button = new UxButton(x, y, width, height,
+                text);
+        button.setHoverStrings(text, StringUtils.translate(hover));
+        gui.addButton(button, (b, mouseButton) -> action.run());
+        return button;
+    }
+
+    static void label(GuiBase gui, int x, int y, int width, String key, Object... args)
+    {
+        String text = StringUtils.translate(key, args);
+        gui.addLabel(x, y, width, 12, 0xFFCCCCCC,
+                gui.font.plainSubstrByWidth(text, Math.max(1, width)));
+        if (gui.getStringWidth(text) > width)
         {
-            String label = StringUtils.translate("litematica.gui.button.area_selection_mode", mode.getDisplayName());
-            width = Math.max(width, this.getStringWidth(label) + 10);
+            gui.addWidget(new WidgetHoverInfo(x, y, width, 12, text));
         }
-
-        return width;
     }
 
     public static class ButtonListenerChangeMenu implements IButtonActionListener
@@ -128,19 +196,17 @@ public class GuiMainMenu extends GuiBase
             switch (this.type)
             {
                 case AREA_EDITOR:
-                    gui = DataManager.getSelectionManager().getEditGui();
-                    break;
                 case AREA_SELECTION_BROWSER:
-                    gui = new GuiAreaSelectionManager();
-                    break;
-                case CONFIGURATION:
-                    GuiBase.openGui(new GuiConfigs());
+                    GuiSaveSelection.open(this.parent);
                     return;
+                case CONFIGURATION:
+                    gui = new GuiConfigs();
+                    break;
                 case LOAD_SCHEMATICS:
-                    gui = new GuiSchematicLoad();
+                    gui = new GuiQuickPlace();
                     break;
                 case LOADED_SCHEMATICS:
-                    gui = new GuiSchematicLoadedList();
+                    gui = new GuiGhosts(true);
                     break;
                 case MAIN_MENU:
                     gui = new GuiMainMenu();
@@ -149,7 +215,7 @@ public class GuiMainMenu extends GuiBase
                     gui = new GuiSchematicManager();
                     break;
                 case SCHEMATIC_PLACEMENTS:
-                    gui = new GuiSchematicPlacementsList();
+                    gui = new GuiGhosts();
                     break;
                 case TASK_MANAGER:
                     gui = new GuiTaskManager();
@@ -215,24 +281,4 @@ public class GuiMainMenu extends GuiBase
         }
     }
 
-    private record ButtonListenerCycleToolMode(GuiMainMenu gui) implements IButtonActionListener
-    {
-        @Override
-        public void actionPerformedWithButton(ButtonBase button, int mouseButton)
-        {
-            ToolMode mode = DataManager.getToolMode().cycle(Minecraft.getInstance().player, mouseButton == 0);
-            DataManager.setToolMode(mode);
-            this.gui.initGui();
-        }
-    }
-
-    private record ButtonListenerCycleAreaMode(GuiMainMenu gui) implements IButtonActionListener
-    {
-        @Override
-        public void actionPerformedWithButton(ButtonBase button, int mouseButton)
-        {
-            DataManager.getSelectionManager().switchSelectionMode();
-            this.gui.initGui();
-        }
-    }
 }

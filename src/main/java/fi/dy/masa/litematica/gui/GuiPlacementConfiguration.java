@@ -12,17 +12,19 @@ import fi.dy.masa.malilib.gui.GuiTextFieldInteger;
 import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
-import fi.dy.masa.malilib.gui.button.ButtonOnOff;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
 import fi.dy.masa.malilib.gui.interfaces.ISelectionListener;
 import fi.dy.masa.malilib.gui.interfaces.ITextFieldListener;
-import fi.dy.masa.malilib.gui.widgets.WidgetCheckBox;
 import fi.dy.masa.malilib.gui.wrappers.TextFieldType;
 import fi.dy.masa.malilib.util.GuiUtils;
 import fi.dy.masa.malilib.util.StringUtils;
 import fi.dy.masa.malilib.util.position.PositionUtils.CoordinateType;
 import fi.dy.masa.litematica.data.DataManager;
-import fi.dy.masa.litematica.gui.GuiMainMenu.ButtonListenerChangeMenu;
+import fi.dy.masa.litematica.config.Configs;
+import fi.dy.masa.litematica.config.Hotkeys;
+import fi.dy.masa.litematica.tool.ToolMode;
+import fi.dy.masa.litematica.util.EntityUtils;
+import fi.dy.masa.malilib.util.InfoUtils;
 import fi.dy.masa.litematica.gui.widgets.WidgetListPlacementSubRegions;
 import fi.dy.masa.litematica.gui.widgets.WidgetPlacementSubRegion;
 import fi.dy.masa.litematica.materials.MaterialListBase;
@@ -34,14 +36,21 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
                                         implements ISelectionListener<SubRegionPlacement>
 {
     public final SchematicPlacement placement;
+    private final PlacementUiContext context;
+    private boolean advanced;
+    private final java.util.List<UxButton> actions = new java.util.ArrayList<>();
+    private final java.util.List<GuiTextFieldGeneric> fields = new java.util.ArrayList<>();
+    private int focused = -1;
     public ButtonGeneric buttonResetPlacement;
     public GuiTextFieldGeneric textFieldRename;
 
     public GuiPlacementConfiguration(SchematicPlacement placement)
     {
-        super(10, 62);
+        super(10, 82);
         this.placement = placement;
-        this.title = StringUtils.translate("litematica.gui.title.configure_schematic_placement");
+        this.context = new PlacementUiContext(placement);
+        this.useTitleHierarchy = false;
+        this.title = StringUtils.translate("litematica.gui.placement_editor.title");
     }
 
     @Override
@@ -53,16 +62,25 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
     @Override
     protected int getBrowserHeight()
     {
-        return this.getScreenHeight() - 84;
+        return this.getScreenHeight() - 112;
     }
 
     @Override
     public void initGui()
     {
+        this.actions.clear();
+        this.fields.clear();
+        this.focused = -1;
+        this.buttonResetPlacement = null;
         super.initGui();
+        if (!this.advanced)
+        {
+            this.createBasicPage();
+            return;
+        }
 
         int scaledWidth = GuiUtils.getScaledWindowWidth();
-        int width = Math.min(300, scaledWidth - 200);
+        int width = Math.min(300, scaledWidth - 230);
         int x = 12;
         int y = 22;
 
@@ -70,14 +88,15 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
         this.textFieldRename.setMaxLengthWrapper(256);
         this.textFieldRename.setValueWrapper(this.placement.getName());
         this.addTextField(this.textFieldRename, null, TextFieldType.STRING);
+        this.fields.add(this.textFieldRename);
         this.createButton(x + width + 4, y, -1, ButtonListener.Type.RENAME_PLACEMENT);
 
         String label = StringUtils.translate("litematica.gui.label.schematic_placement.sub_regions", this.placement.getSubRegionCount());
         this.addLabel(x + 2, y + 26, -1, 20, 0xFFFFFFFF, label);
 
         x = scaledWidth - 154;
-        x -= this.createButton(x, y + 22, -1, ButtonListener.Type.TOGGLE_ALL_REGIONS_OFF) + 2;
-        this.createButton(x, y + 22, -1, ButtonListener.Type.TOGGLE_ALL_REGIONS_ON);
+        x -= this.createButton(x, y + 38, -1, ButtonListener.Type.TOGGLE_ALL_REGIONS_OFF) + 2;
+        this.createButton(x, y + 38, -1, ButtonListener.Type.TOGGLE_ALL_REGIONS_ON);
 
         width = 120;
         x = this.getScreenWidth() - width - 10;
@@ -92,72 +111,215 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
 
         this.createButtonOnOff(x, y, width, this.placement.ignoreEntities(), ButtonListener.Type.TOGGLE_ENTITIES);
         y += 21;
-        x += 2;
-
-        label = StringUtils.translate("litematica.gui.label.placement_settings.placement_origin");
-        this.addLabel(x, y, width, 20, 0xFFFFFFFF, label);
-        y += 14;
-
-        this.createCoordinateInput(x, y, 70, CoordinateType.X);
-        this.createButton(x + 85, y + 1, -1, ButtonListener.Type.NUDGE_COORD_X);
-        y += 18;
-
-        this.createCoordinateInput(x, y, 70, CoordinateType.Y);
-        this.createButton(x + 85, y + 1, -1, ButtonListener.Type.NUDGE_COORD_Y);
-        y += 18;
-
-        this.createCoordinateInput(x, y, 70, CoordinateType.Z);
-        this.createButton(x + 85, y + 1, -1, ButtonListener.Type.NUDGE_COORD_Z);
-        y += 20;
-        x -= 2;
-
-        this.createButton(x, y, width, ButtonListener.Type.MOVE_TO_PLAYER);
-        y += 21;
-
-        this.createButton(x, y, width, ButtonListener.Type.ROTATE);
-        y += 21;
-
-        this.createButton(x, y, width, ButtonListener.Type.MIRROR);
-        y += 21;
-
         this.createButton(x, y, width, ButtonListener.Type.RESET_SUB_REGIONS);
 
-        ButtonListenerChangeMenu.ButtonType type;
-
-        // Move these buttons to the bottom (left) of the screen, if the height isn't enough for them
-        // to fit below the other buttons
-        if (GuiUtils.getScaledWindowHeight() < 328)
-        {
-            x = 10;
-            y = this.getScreenHeight() - 22;
-
-            x += this.createButton(x, y, -1, ButtonListener.Type.OPEN_MATERIAL_LIST_GUI) + 1;
-            x += this.createButton(x, y, -1, ButtonListener.Type.OPEN_VERIFIER_GUI) + 1;
-
-            type = ButtonListenerChangeMenu.ButtonType.SCHEMATIC_PLACEMENTS;
-            label = StringUtils.translate(type.getLabelKey());
-            int buttonWidth = this.getStringWidth(label) + 10;
-            ButtonGeneric button = new ButtonGeneric(x, y, buttonWidth, 20, label);
-            this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent()));
-        }
-        else
-        {
-            y += 32;
-            this.createButton(x, y, width, ButtonListener.Type.OPEN_MATERIAL_LIST_GUI);
-            y += 21;
-
-            this.createButton(x, y, width, ButtonListener.Type.OPEN_VERIFIER_GUI);
-            y += 32;
-
-            type = ButtonListenerChangeMenu.ButtonType.SCHEMATIC_PLACEMENTS;
-            label = StringUtils.translate(type.getLabelKey());
-            int buttonWidth = this.getStringWidth(label) + 10;
-            x = this.getScreenWidth() - buttonWidth - 9;
-            ButtonGeneric button = new ButtonGeneric(x, y, buttonWidth, 20, label);
-            this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent()));
-        }
+        this.pageButtons(10, this.getScreenHeight() - 24, Math.min(300, this.getScreenWidth() - 20));
 
         this.updateElements();
+    }
+
+    @Override
+    protected WidgetListPlacementSubRegions getListWidget()
+    {
+        return this.advanced ? super.getListWidget() : null;
+    }
+
+    private static String text(String key, Object... args)
+    {
+        return StringUtils.translate("litematica.gui.quick_place." + key, args);
+    }
+
+    private UxButton action(int x, int y, int width, String label, Runnable action)
+    {
+        return this.addButton(new UxButton(x, y, width, 20, label, label), (button, mouse) -> action.run());
+    }
+
+    private void pageButtons(int x, int y, int width)
+    {
+        int half = (width - 4) / 2;
+        this.action(x, y, half, StringUtils.translate("litematica.gui.placement_editor." + (this.advanced ? "basic" : "advanced")), () -> {
+            this.advanced = !this.advanced;
+            this.initGui();
+        });
+        this.action(x + half + 4, y, half, text("done"), () -> openGui(this.getParent()));
+    }
+
+    private void createBasicPage()
+    {
+        int width = Math.min(420, this.getScreenWidth() - 24);
+        int x = (this.getScreenWidth() - width) / 2;
+        int half = (width - 4) / 2;
+        this.addLabel(x, 24, width, 12, 0xFFFFFFFF, this.font.plainSubstrByWidth(this.placement.getName(), width));
+        this.addLabel(x, 38, width, 12, 0xFFFFFFFF, text(this.previewHidden() ? "preview_hidden" : "ghost_only"));
+        for (CoordinateType axis : CoordinateType.values())
+        {
+            int y = 54 + axis.ordinal() * 22;
+            this.createCoordinateInput(x, y, half - 68, axis);
+            this.action(x + half + 4, y, (half - 4) / 2, axis.name() + " −", () -> this.move(axis, -1))
+                .setEnabled(!this.placement.isLocked() && !this.placement.isCoordinateLocked(axis));
+            this.action(x + half + 8 + (half - 4) / 2, y, (half - 4) / 2, axis.name() + " +", () -> this.move(axis, 1))
+                .setEnabled(!this.placement.isLocked() && !this.placement.isCoordinateLocked(axis));
+        }
+        this.createButton(x, 120, half, ButtonListener.Type.ROTATE);
+        this.createButton(x + half + 4, 120, half, ButtonListener.Type.MIRROR);
+        this.createButton(x, 142, half, ButtonListener.Type.MOVE_TO_PLAYER);
+        this.createButtonOnOff(x + half + 4, 142, half, this.placement.isLocked(), ButtonListener.Type.TOGGLE_LOCKED);
+        this.createButton(x, 164, half, ButtonListener.Type.OPEN_MATERIAL_LIST_GUI);
+        this.createButton(x + half + 4, 164, half, ButtonListener.Type.OPEN_VERIFIER_GUI);
+        int third = (width - 8) / 3;
+        this.action(x, 186, third, text("paste"), () -> {
+            if (this.context.valid(this))
+                DataManager.getSchematicPlacementManager().pastePlacementToWorld(this.placement, false, true, this.mc);
+        }).setEnabled(this.mc.player != null && EntityUtils.isCreativeMode(this.mc.player));
+        this.action(x + third + 4, 186, third, text("tool_help"), this::useTool);
+        this.action(x + 2 * (third + 4), 186, third, text("restore_preview"), this::restorePreview);
+        this.pageButtons(x, 212, width);
+    }
+
+    @Override
+    public void addGuiMessage(MessageType type, int duration, String key, Object... args)
+    {
+        super.addGuiMessage(type, duration, key, args);
+        if (type == MessageType.ERROR || type == MessageType.WARNING)
+            InfoUtils.showInGameMessage(type, (long) duration, key, args);
+    }
+
+    @Override
+    public void setString(String message)
+    {
+        this.addMessage(MessageType.ERROR, message);
+    }
+
+    private boolean previewHidden()
+    {
+        return !Configs.Visuals.ENABLE_RENDERING.getBooleanValue() ||
+               !Configs.Visuals.ENABLE_SCHEMATIC_RENDERING.getBooleanValue() ||
+               !Configs.Visuals.ENABLE_SCHEMATIC_BLOCKS.getBooleanValue();
+    }
+
+    private void restorePreview()
+    {
+        if (!this.context.valid(this)) return;
+        Configs.Visuals.ENABLE_RENDERING.setBooleanValue(true);
+        Configs.Visuals.ENABLE_SCHEMATIC_RENDERING.setBooleanValue(true);
+        Configs.Visuals.ENABLE_SCHEMATIC_BLOCKS.setBooleanValue(true);
+        this.initGui();
+    }
+
+    private void useTool()
+    {
+        if (!this.context.valid(this)) return;
+        if (this.placement.isLocked())
+        {
+            this.addMessage(MessageType.ERROR, "litematica.message.placement.cant_modify_is_locked");
+            return;
+        }
+        if (DataManager.getSchematicProjectsManager().hasProjectOpen())
+        {
+            this.addMessage(MessageType.ERROR, "litematica.gui.quick_place.project_tool");
+            return;
+        }
+        if (!Configs.Visuals.ENABLE_RENDERING.getBooleanValue())
+        {
+            this.addMessage(MessageType.ERROR, "litematica.gui.quick_place.render_tool");
+            return;
+        }
+        DataManager.setToolMode(ToolMode.SCHEMATIC_PLACEMENT);
+        Configs.Generic.TOOL_ITEM_ENABLED.setBooleanValue(true);
+        this.placement.setSelectedSubRegionName(null);
+        DataManager.getSchematicPlacementManager().setSelectedSchematicPlacement(this.placement);
+        InfoUtils.showGuiAndInGameMessage(MessageType.INFO, 15000, "litematica.gui.quick_place.tool_instructions",
+                (DataManager.getInstance().hasToolItemComponents()
+                    ? DataManager.getInstance().getToolItemComponents() : DataManager.getToolItem()).getHoverName().getString(),
+                Hotkeys.TOOL_PLACE_CORNER_2.getKeybind().getKeysDisplayString());
+    }
+
+    private void move(CoordinateType axis, int amount)
+    {
+        if (isShiftDown()) amount *= 8;
+        if (isAltDown()) amount *= 4;
+        BlockPos old = this.placement.getOrigin();
+        this.moveOrigin(switch (axis)
+        {
+            case X -> old.offset(amount, 0, 0);
+            case Y -> old.offset(0, amount, 0);
+            case Z -> old.offset(0, 0, amount);
+        });
+        this.initGui();
+    }
+
+    private void moveOrigin(BlockPos pos)
+    {
+        if (!this.context.valid(this)) return;
+        // Validate the effective position, not coordinates that are locked and won't move.
+        BlockPos old = this.placement.getOrigin();
+        pos = new BlockPos(this.placement.isCoordinateLocked(CoordinateType.X) ? old.getX() : pos.getX(),
+                           this.placement.isCoordinateLocked(CoordinateType.Y) ? old.getY() : pos.getY(),
+                           this.placement.isCoordinateLocked(CoordinateType.Z) ? old.getZ() : pos.getZ());
+        if (!this.mc.level.isInsideBuildHeight(pos) || !this.mc.level.getWorldBorder().isWithinBounds(pos))
+        {
+            this.addMessage(MessageType.ERROR, "litematica.gui.quick_place.outside_world");
+            return;
+        }
+        this.setNextMessageType(MessageType.ERROR);
+        this.placement.setOrigin(pos, this);
+    }
+
+    @Override
+    public <T extends ButtonBase> T addButton(T button, IButtonActionListener listener)
+    {
+        if (button instanceof UxButton action) this.actions.add(action);
+        return super.addButton(button, listener);
+    }
+
+    @Override
+    public boolean onMouseClicked(net.minecraft.client.input.MouseButtonEvent input, boolean doubleClick)
+    {
+        this.focused = -1;
+        this.actions.forEach(action -> action.setKeyboardFocused(false));
+        // Also guards the legacy region-list buttons, without changing their shared widget.
+        if (doubleClick) return true;
+        if (this.advanced && input.y() >= 82 && input.y() < this.getScreenHeight() - 30 &&
+            input.x() < this.getScreenWidth() - 140 && !this.context.valid(this)) return true;
+        return super.onMouseClicked(input, false);
+    }
+
+    @Override
+    public boolean onKeyTyped(net.minecraft.client.input.KeyEvent input)
+    {
+        int count = this.fields.size();
+        int fieldFocus = -1;
+        for (int i = 0; i < count; ++i)
+            if (this.fields.get(i).isFocusedWrapper()) fieldFocus = i;
+        if (input.key() == 258)
+        {
+            int current = fieldFocus >= 0 ? fieldFocus : this.focused;
+            int step = input.hasShiftDown() ? -1 : 1;
+            int total = count + this.actions.size();
+            this.focused = current < 0 ? (step > 0 ? 0 : total - 1) : Math.floorMod(current + step, total);
+            for (int i = 0; i < count; ++i) this.fields.get(i).setFocusedWrapper(i == this.focused);
+            for (int i = 0; i < this.actions.size(); ++i) this.actions.get(i).setKeyboardFocused(i + count == this.focused);
+            this.mc.getNarrator().saySystemNow(this.focused < count ? (this.advanced ? StringUtils.translate("litematica.gui.button.rename")
+                : text("coordinate_tip", CoordinateType.values()[this.focused].name()))
+                : String.join(". ", this.actions.get(this.focused - count).getHoverStrings()));
+            return true;
+        }
+        if (fieldFocus >= 0) return super.onKeyTyped(input);
+        if ((input.key() == 257 || input.key() == 335 || input.key() == 32) && this.focused >= count)
+        {
+            this.actions.get(this.focused - count).activate();
+            return true;
+        }
+        if (this.advanced && input.key() != 256 && !this.context.valid(this)) return true;
+        if (this.focused >= count && input.key() != 256) return true;
+        return super.onKeyTyped(input);
+    }
+
+    @Override
+    public boolean onCharTyped(net.minecraft.client.input.CharacterEvent input)
+    {
+        if (this.focused >= this.fields.size()) return true;
+        return super.onCharTyped(input);
     }
 
     protected void createCoordinateInput(int x, int y, int width, CoordinateType type)
@@ -177,19 +339,24 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
 	    GuiTextFieldInteger textField = new GuiTextFieldInteger(x + offset, y + 2, width, 14, this.font);
         textField.setValueWrapper(text);
         TextFieldListener listener = new TextFieldListener(type, this.placement, this);
+        textField.setEditable(!this.placement.isLocked() && !this.placement.isCoordinateLocked(type));
+        textField.setHoverTooltip(text("coordinate_tip", type.name()));
         this.addTextField(textField, listener, TextFieldType.STRING);
+        this.fields.add(textField);
 
-        String hover = StringUtils.translate("litematica.hud.schematic_placement.hover_info.lock_coordinate");
-        x = x + offset + width + 20;
-        WidgetCheckBox cb = new WidgetCheckBox(x, y + 3, Icons.CHECKBOX_UNSELECTED, Icons.CHECKBOX_SELECTED, "", hover);
-        cb.setChecked(this.placement.isCoordinateLocked(type), false);
-        cb.setListener(new CoordinateLockListener(type, this.placement));
-        this.addWidget(cb);
+        String labelKey = this.placement.isCoordinateLocked(type) ? "unlock_axis" : "lock_axis";
+        this.action(x + offset + width + 4, y, 48,
+                StringUtils.translate("litematica.gui.placement_editor." + labelKey, type.name()), () -> {
+                    if (!this.context.valid(this)) return;
+                    this.placement.setCoordinateLocked(type, !this.placement.isCoordinateLocked(type));
+                    this.initGui();
+                });
     }
 
     public int createButtonOnOff(int x, int y, int width, boolean isCurrentlyOn, ButtonListener.Type type)
     {
-        ButtonOnOff button = new ButtonOnOff(x, y, width, false, type.getTranslationKey(), isCurrentlyOn);
+        String label = type.getDisplayName(StringUtils.translate("litematica.message.value." + (isCurrentlyOn ? "on" : "off")));
+        ButtonGeneric button = new UxButton(x, y, width, 20, label, label);
         String hoverString = type.getHoverText();
 
         if (hoverString != null)
@@ -230,7 +397,7 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
                 String hover = StringUtils.translate("litematica.gui.button.schematic_placement.hover.rendering", str);
 
                 this.addButton(new ButtonGeneric(x, y, width, 20, label, hover), listener);
-                break;
+                return width;
             }
 
             case ROTATE:
@@ -272,8 +439,10 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
             x -= width;
         }
 
-        ButtonGeneric button = new ButtonGeneric(x, y, width, 20, label);
+        ButtonGeneric button = new UxButton(x, y, width, 20, label, label);
 
+        if (type == ButtonListener.Type.ROTATE || type == ButtonListener.Type.MIRROR || type == ButtonListener.Type.MOVE_TO_PLAYER)
+            button.setEnabled(!this.placement.isLocked());
         this.addButton(button, listener);
 
         if (type == ButtonListener.Type.RESET_SUB_REGIONS)
@@ -286,7 +455,8 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
 
     protected void updateElements()
     {
-        String label = StringUtils.translate("litematica.gui.button.schematic_placement.reset_sub_region_placements");;
+        if (this.buttonResetPlacement == null) return;
+        String label = StringUtils.translate("litematica.gui.button.schematic_placement.reset_sub_region_placements");
         boolean enabled = true;
 
         if (this.placement.isRegionPlacementModified())
@@ -299,7 +469,7 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
         }
 
         this.buttonResetPlacement.setDisplayString(label);
-        this.buttonResetPlacement.setEnabled(enabled);
+        this.buttonResetPlacement.setEnabled(enabled && !this.placement.isLocked());
     }
 
     public SchematicPlacement getSchematicPlacement()
@@ -316,6 +486,7 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
     @Override
     public void onSelectionChange(SubRegionPlacement entry)
     {
+        if (!this.context.valid(this)) return;
         this.placement.setSelectedSubRegionName(entry != null && entry.getName().equals(this.placement.getSelectedSubRegionName()) == false ? entry.getName() : null);
     }
 
@@ -333,7 +504,7 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
         {
             Minecraft mc = Minecraft.getInstance();
 
-            if (mc.player == null)
+            if (!this.parent.context.valid(this.parent))
             {
                 return;
             }
@@ -377,20 +548,20 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
                 case MOVE_TO_PLAYER:
                 {
                     BlockPos pos = BlockPos.containing(mc.player.position());
-                    this.placement.setOrigin(pos, this.parent);
+                    this.parent.moveOrigin(pos);
                     break;
                 }
 
                 case NUDGE_COORD_X:
-                    this.placement.setOrigin(oldOrigin.offset(amount, 0, 0), this.parent);
+                    this.parent.moveOrigin(oldOrigin.offset(amount, 0, 0));
                     break;
 
                 case NUDGE_COORD_Y:
-                    this.placement.setOrigin(oldOrigin.offset(0, amount, 0), this.parent);
+                    this.parent.moveOrigin(oldOrigin.offset(0, amount, 0));
                     break;
 
                 case NUDGE_COORD_Z:
-                    this.placement.setOrigin(oldOrigin.offset(0, 0, amount), this.parent);
+                    this.parent.moveOrigin(oldOrigin.offset(0, 0, amount));
                     break;
 
                 case TOGGLE_ENABLED:
@@ -430,7 +601,7 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
                     GuiSchematicVerifier gui = new GuiSchematicVerifier(this.placement);
                     gui.setParent(this.parent);
                     GuiBase.openGui(gui);
-                    break;
+                    return;
                 }
 
                 case OPEN_MATERIAL_LIST_GUI:
@@ -441,7 +612,7 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
                     DataManager.setMaterialList(materialList); // Remember the last opened material list for the hotkey to (re-) open it
                     gui.setParent(this.parent);
                     GuiBase.openGui(gui);
-                    break;
+                    return;
                 }
             }
 
@@ -464,7 +635,7 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
             TOGGLE_ENCLOSING_BOX    (""),
             TOGGLE_ALL_REGIONS_ON   ("litematica.gui.button.schematic_placement.toggle_all_on"),
             TOGGLE_ALL_REGIONS_OFF  ("litematica.gui.button.schematic_placement.toggle_all_off"),
-            RESET_SUB_REGIONS       (""),
+            RESET_SUB_REGIONS       ("litematica.gui.button.schematic_placement.reset_sub_region_placements"),
             OPEN_VERIFIER_GUI       ("litematica.gui.button.schematic_verifier"),
             OPEN_MATERIAL_LIST_GUI  ("litematica.gui.button.material_list");
 
@@ -516,13 +687,13 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
                 switch (this.type)
                 {
                     case X:
-                        this.placement.setOrigin(new BlockPos(value, posOld.getY(), posOld.getZ()), this.parent);
+                        this.parent.moveOrigin(new BlockPos(value, posOld.getY(), posOld.getZ()));
                         break;
                     case Y:
-                        this.placement.setOrigin(new BlockPos(posOld.getX(), value, posOld.getZ()), this.parent);
+                        this.parent.moveOrigin(new BlockPos(posOld.getX(), value, posOld.getZ()));
                         break;
                     case Z:
-                        this.placement.setOrigin(new BlockPos(posOld.getX(), posOld.getY(), value), this.parent);
+                        this.parent.moveOrigin(new BlockPos(posOld.getX(), posOld.getY(), value));
                         break;
                 }
 
@@ -536,17 +707,4 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
         }
     }
 
-    public record CoordinateLockListener(CoordinateType type, SchematicPlacement placement)
-            implements ISelectionListener<WidgetCheckBox>
-    {
-        @Override
-        public void onSelectionChange(WidgetCheckBox entry)
-        {
-            if (entry == null)
-            {
-                return;
-            }
-            this.placement.setCoordinateLocked(this.type, entry.isChecked());
-        }
-    }
 }

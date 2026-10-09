@@ -228,7 +228,7 @@ public class PositionUtils
     public static BlockPos getEnclosingAreaSize(Collection<Box> boxes)
     {
         Pair<BlockPos, BlockPos> pair = getEnclosingAreaCorners(boxes);
-        return pair.getRight().subtract(pair.getLeft()).offset(1, 1, 1);
+        return pair != null ? pair.getRight().subtract(pair.getLeft()).offset(1, 1, 1) : BlockPos.ZERO;
     }
 
     /**
@@ -254,7 +254,8 @@ public class PositionUtils
             getMinMaxCoords(posMin, posMax, box.getPos2());
         }
 
-        return Pair.of(posMin.immutable(), posMax.immutable());
+        // An empty Simple selection retains its box, but has no corners to enclose.
+        return posMin.getX() > posMax.getX() ? null : Pair.of(posMin.immutable(), posMax.immutable());
     }
 
     private static void getMinMaxCoords(BlockPos.MutableBlockPos posMin, BlockPos.MutableBlockPos posMax, @Nullable BlockPos posToCheck)

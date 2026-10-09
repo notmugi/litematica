@@ -325,6 +325,32 @@ public class SelectionManager
         }
     }
 
+    public boolean hasSelectionToClear()
+    {
+        AreaSelection area = this.getCurrentSelection();
+        return this.grabbedElement != null || (area != null && area.hasSelectionGeometry());
+    }
+
+    /** User action, unlike setCurrentSelection which only changes the named-selection ID. */
+    public void clearCurrentSelection()
+    {
+        this.releaseGrabbedElement();
+        SchematicProject project = DataManager.getSchematicProjectsManager().getCurrentProject();
+        if (DataManager.getSchematicProjectsManager().hasProjectOpen() && project != null)
+        {
+            project.clearSelectionGeometry();
+        }
+        else
+        {
+            if (this.mode == SelectionMode.SIMPLE)
+            {
+                this.getSimpleSelection().clearSelectionGeometry();
+            }
+            // Unselect named areas without deleting their saved boxes/files.
+            this.setCurrentSelection(null);
+        }
+    }
+
     /**
      * Creates a new schematic selection and returns the name of it
      * @return ()

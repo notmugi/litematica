@@ -55,6 +55,11 @@ public class Configs implements IConfigHandler
         public static final ConfigBoolean       CUSTOM_SCHEMATIC_BASE_DIRECTORY_ENABLED = new ConfigBoolean("customSchematicBaseDirectoryEnabled", false).apply(GENERIC_KEY);
         public static final ConfigString        CUSTOM_SCHEMATIC_BASE_DIRECTORY         = new ConfigString( "customSchematicBaseDirectory", DataManager.getDefaultBaseSchematicDirectory().toAbsolutePath().toString()).apply(GENERIC_KEY);
 
+        public static final ConfigBoolean       UX_WELCOME_DISMISSED        = new ConfigBoolean("uxWelcomeDismissed", false).apply(GENERIC_KEY);
+        public static final ConfigBoolean       UX_STATUS_HUD               = new ConfigBoolean("uxStatusHud", true).apply(GENERIC_KEY);
+        public static final ConfigBoolean       UX_CONFIRM_WORLD_EDITS      = new ConfigBoolean("uxConfirmWorldEdits", true).apply(GENERIC_KEY);
+        public static final ConfigBoolean       UX_CONFIRM_DISCARD          = new ConfigBoolean("uxConfirmDiscard", true).apply(GENERIC_KEY);
+
         public static final ConfigBoolean       AREAS_PER_WORLD             = new ConfigBoolean("areaSelectionsPerWorld", true).apply(GENERIC_KEY);
 //        public static final ConfigBoolean       BETTER_RENDER_ORDER         = new ConfigBoolean("betterRenderOrder", true).apply(GENERIC_KEY);
         public static final ConfigBoolean       CHANGE_SELECTED_CORNER      = new ConfigBoolean("changeSelectedCornerOnMove", true).apply(GENERIC_KEY);
@@ -142,6 +147,10 @@ public class Configs implements IConfigHandler
         public static final ConfigBoolean       UNHIDE_SCHEMATIC_PROJECTS   = new ConfigBoolean("unhideSchematicVCS", false).apply(GENERIC_KEY);
 
         public static final ImmutableList<IConfigBase> OPTIONS = ImmutableList.of(
+                UX_WELCOME_DISMISSED,
+                UX_STATUS_HUD,
+                UX_CONFIRM_WORLD_EDITS,
+                UX_CONFIRM_DISCARD,
                 PLACEMENT_MANAGER_THREAD_COUNT,
 //                PLACEMENT_MANAGER_PROFILE,
 
