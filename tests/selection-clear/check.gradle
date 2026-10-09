@@ -1,0 +1,13 @@
+// Java source launcher against real production classes/dependencies, not a Minecraft client.
+allprojects {
+    afterEvaluate {
+        tasks.register('checkSelectionClear', JavaExec) {
+            dependsOn tasks.named('classes')
+            classpath = sourceSets.main.runtimeClasspath
+            mainClass = file('tests/selection-clear/SelectionClearCheck.java').absolutePath
+            workingDir = file('build/selection-clear-check')
+            doFirst { workingDir.mkdirs() }
+            jvmArgs '-ea', '-Djava.awt.headless=true', '-Djava.io.tmpdir=' + file('.work').absolutePath
+        }
+    }
+}
