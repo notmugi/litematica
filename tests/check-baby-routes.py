@@ -23,7 +23,7 @@ paste_screens = [path for path, source in sources.items()
 assert paste_screens == [str(gui / 'GuiPlacementConfiguration.java')], paste_screens
 layer_screens = [path for path, source in sources.items()
                  if '/gui/' in path and 'new GuiRenderLayer(' in source]
-assert layer_screens == [str(gui / 'GuiConfigs.java')], layer_screens
+assert layer_screens == [str(gui / 'GuiMainMenu.java')], layer_screens
 assert 'new GuiQuickPlace' not in (gui / 'GuiUxHelp.java').read_text(), 'Help must explain, not duplicate navigation'
 home = (gui / 'GuiMainMenu.java').read_text()
 advanced = home.split('if (this.advanced)')[1].split('\n        else')[0]

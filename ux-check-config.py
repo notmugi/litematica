@@ -42,8 +42,13 @@ assert 'UxConfigCategories.GROUPS, ConfigGuiTab::getDisplayName' in gui_source
 hotkey_entry = re.search(r'public static void openHotkeys\(Screen parent\)\s*\{(.*?)\}', gui_source, re.S).group(1)
 assert 'DataManager.setConfigGuiTab(ConfigGuiTab.HOTKEYS)' in hotkey_entry
 assert 'new GuiConfigs().setParent(parent)' in hotkey_entry
-assert gui_source.count('new GuiRenderLayer()') == 1
-assert 'new GuiRenderLayer().setParent(this)' in gui_source
+assert 'new GuiRenderLayer(' not in gui_source
+home_source = (ROOT / BASE / 'gui/GuiMainMenu.java').read_text()
+assert home_source.count('new GuiRenderLayer()') == 1
+assert 'openChild(this, new GuiRenderLayer())' in home_source
+open_child = home_source.split('static void openChild(')[1].split('\n    }')[0]
+assert 'child.setParent(parent);' in open_child
+assert open_child.index('child.setParent(parent);') < open_child.index('GuiBase.openGui(child);')
 layers_source = (ROOT / BASE / 'gui/GuiRenderLayer.java').read_text()
 assert 'this.closeGui(true)' in layers_source and 'new GuiConfigs' not in layers_source
 assert 'DataManager.setConfigGuiTab(UxConfigCategories.canonicalTab(DataManager.getConfigGuiTab()))' in gui_source

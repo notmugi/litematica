@@ -77,9 +77,11 @@ public class GuiMainMenu extends GuiUxBase
         int columns = width >= 356 ? 2 : 1;
         if (this.advanced)
         {
-            this.menuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.TASK_MANAGER);
+            action(this, x, y, width, 20, StringUtils.translate("litematica.gui.ux.home.layers"),
+                    "litematica.gui.ux.home.layers.tip", () -> openChild(this, new GuiRenderLayer()));
+            this.menuButton(x, y + 26, width, ButtonListenerChangeMenu.ButtonType.TASK_MANAGER);
             if (Configs.Generic.UNHIDE_SCHEMATIC_PROJECTS.getBooleanValue())
-                this.menuButton(x, y + 26, width, ButtonListenerChangeMenu.ButtonType.SCHEMATIC_PROJECTS_MANAGER);
+                this.menuButton(x, y + 52, width, ButtonListenerChangeMenu.ButtonType.SCHEMATIC_PROJECTS_MANAGER);
 
         }
         else

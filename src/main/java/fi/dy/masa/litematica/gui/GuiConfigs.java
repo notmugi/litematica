@@ -85,18 +85,9 @@ public class GuiConfigs extends GuiConfigsBase
                 StringUtils.translate("litematica.gui.button.ux.reset_group"), "litematica.gui.hover.ux.reset_group"),
                 (button, mouseButton) -> this.confirmReset());
 
-        int hintX = 10;
-        if (DataManager.getConfigGuiTab() == ConfigGuiTab.BUILDING)
-        {
-            int layersWidth = Math.min(170, available / 2);
-            this.addButton(new UxButton(10, this.height - 26, layersWidth, 20,
-                    StringUtils.translate("litematica.gui.button.ux.edit_layers"), "litematica.gui.hover.ux.edit_layers"),
-                    (button, mouseButton) -> GuiBase.openGui(new GuiRenderLayer().setParent(this)));
-            hintX += layersWidth + 6;
-        }
         String searchHint = StringUtils.translate("litematica.gui.label.ux.search_all_settings");
-        this.addWidget(new WidgetLabel(hintX, this.height - 20, available - hintX + 10, 14, 0xFFB6C7D6,
-                this.font.plainSubstrByWidth(searchHint, Math.max(1, available - hintX + 10))));
+        this.addWidget(new WidgetLabel(10, this.height - 20, available + 10, 14, 0xFFB6C7D6,
+                this.font.plainSubstrByWidth(searchHint, Math.max(1, available + 10))));
     }
 
     @Override

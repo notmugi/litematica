@@ -1404,8 +1404,8 @@
     "litematica.gui.quick_place.paste_tip": "Paste this ghost as REAL world blocks. Asks for confirmation first; this preview stays. Creative mode required.",
     "litematica.gui.quick_place.browser_hint": "Pick a schematic, then Next. Rename or open JSON/TXT lists in My schematics.",
     "litematica.gui.quick_place.commit_failed": "Could not finish loading or placing. Check Loaded schematics and placements before trying again.",
-    "litematica.gui.button.ux.edit_layers": "Edit visible layers…",
-    "litematica.gui.hover.ux.edit_layers": "Choose which schematic layers are visible. This affects every preview, not world blocks. Back returns to Building & rendering settings.",
+    "litematica.gui.button.ux.edit_layers": "Layer rendering",
+    "litematica.gui.hover.ux.edit_layers": "Choose which schematic layers are visible. This affects every preview, not world blocks.",
     "litematica.gui.label.ux.search_all_settings": "Search covers all settings and hotkeys",
     "litematica.gui.baby.ghosts": "Ghosts",
     "litematica.gui.baby.ghosts.previews": "Placed previews",
@@ -1420,5 +1420,7 @@
     "litematica.gui.placement_editor.lock_axis": "Lock %s",
     "litematica.gui.placement_editor.unlock_axis": "Unlock %s",
     "litematica.gui.baby.ghosts.clear": "Clear selection",
-    "litematica.gui.baby.ghosts.clear.tip": "Clear the active area-selection boxes and origin. Simple mode stays ready for the next tool click; named saved areas are unselected, not deleted. Project selection geometry is reset. Ghost previews and world blocks are untouched."
+    "litematica.gui.baby.ghosts.clear.tip": "Clear the active area-selection boxes and origin. Simple mode stays ready for the next tool click; named saved areas are unselected, not deleted. Project selection geometry is reset. Ghost previews and world blocks are untouched.",
+    "litematica.gui.ux.home.layers": "Layer rendering",
+    "litematica.gui.ux.home.layers.tip": "Choose which schematic layers are visible. This affects every preview, not world blocks."
 }
