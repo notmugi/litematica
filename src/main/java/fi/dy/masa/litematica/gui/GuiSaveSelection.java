@@ -17,16 +17,6 @@ public class GuiSaveSelection extends GuiBase
     public static void open(@Nullable Screen parent)
     {
         SelectionManager manager = DataManager.getSelectionManager();
-
-        // Manual mode without a current selection still opens the full editor:
-        // create a default named selection (the saved-selections browser stays removed).
-        if (manager.getCurrentSelection() == null &&
-                !DataManager.getSchematicProjectsManager().hasProjectOpen() &&
-                manager.getSelectionMode() == SelectionMode.NORMAL)
-        {
-            manager.createNewSelection(DataManager.getAreaSelectionsBaseDirectory(), "selection");
-        }
-
         GuiBase gui = manager.getEditGui();
 
         if (gui != null)
