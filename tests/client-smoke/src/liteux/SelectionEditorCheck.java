@@ -129,6 +129,17 @@ public final class SelectionEditorCheck
         checkEditor(manager.getCurrentSelection());
         toggle();
         checkEditor(manager.getCurrentSelection());
+        // Save browser gets a real footer Back button, outside its list area.
+        GuiBase editor = screen();
+        GuiSchematicSave save = new GuiSchematicSave();
+        save.setParent(editor);
+        GuiBase.openGui(save);
+        ButtonBase back = button(StringUtils.translate("litematica.gui.ux.back"));
+        check(back.getY() == save.getScreenHeight() - 26, "save Back bottom aligned");
+        check(back.getX() + back.getWidth() == save.getScreenWidth() - 10, "save Back right aligned");
+        check(80 + save.getBrowserHeight() <= back.getY(), "save list does not overlap Back");
+        click(StringUtils.translate("litematica.gui.ux.back"));
+        check(screen() == editor, "save Back returns to editor without saving");
         System.out.println("LITEUX SELECTION EDITOR PASS: empty, cancel, Add Box/Enter return, navigation, clear, mode switches, zero boxes");
         return screen();
     }

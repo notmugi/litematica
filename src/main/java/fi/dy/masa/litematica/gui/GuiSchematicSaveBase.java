@@ -47,7 +47,7 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
     @Override
     public int getBrowserHeight()
     {
-        return this.getScreenHeight() - 100;
+        return this.getScreenHeight() - 112;
     }
 
     @Override
@@ -101,6 +101,12 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
         this.addWidget(this.checkboxIncludeSupportBlocks);
 
         this.createButton(10, 54, ButtonType.SAVE);
+
+        String back = StringUtils.translate("litematica.gui.ux.back");
+        int backWidth = this.getStringWidth(back) + 10;
+        ButtonGeneric backButton = new ButtonGeneric(this.getScreenWidth() - backWidth - 10,
+                this.getScreenHeight() - 26, backWidth, 20, back);
+        this.addButton(backButton, (button, mouseButton) -> this.closeGui(true));
     }
 
     protected void setTextFieldText(String text)
