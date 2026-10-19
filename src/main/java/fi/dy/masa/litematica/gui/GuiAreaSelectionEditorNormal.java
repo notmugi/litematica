@@ -39,7 +39,7 @@ import fi.dy.masa.malilib.util.StringUtils;
 public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSelectionSubRegion, WidgetListSelectionSubRegions>
                                           implements ISelectionListener<String>
 {
-    protected final AreaSelection selection;
+    @Nullable protected AreaSelection selection;
     protected GuiTextFieldGeneric textFieldSelectionName;
     protected WidgetCheckBox checkBoxOrigin;
     protected WidgetCheckBox checkBoxCorner1;
@@ -76,6 +76,20 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
     @Override
     public void initGui()
     {
+        // Dialogs return to this same screen. Refresh its model BEFORE initializing
+        // the list: Add Box and Clear can change the manager's active selection.
+        // A sub-region editor deliberately owns a particular box instead.
+        if (!(this instanceof GuiAreaSelectionEditorSubRegion))
+        {
+            SelectionManager manager = DataManager.getSelectionManager();
+            AreaSelection current = manager.getCurrentSelection();
+            this.selectionId = manager.getCurrentSelectionId();
+            if (this.selection != current)
+            {
+                this.selection = current;
+                this.reCreateListWidget();
+            }
+        }
         super.initGui();
 
         if (this.selection != null)
@@ -92,15 +106,10 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
             int by = 24;
             bx += this.createButton(bx, by, -1, ButtonListener.Type.CHANGE_SELECTION_MODE) + 4;
             bx += this.createButton(bx, by, -1, ButtonListener.Type.CREATE_SUB_REGION) + 4;
-            this.addLabel(bx, by, this.width - bx - 20, 20, 0xFFFFAA00,
+            this.addLabel(12, by + 26, this.width - 24, 20, 0xFFCCCCCC,
                     StringUtils.translate("litematica.error.area_editor.no_selection"));
-
-            String label = StringUtils.translate(ButtonListenerChangeMenu.ButtonType.MAIN_MENU.getLabelKey());
-            int buttonWidth = this.getStringWidth(label) + 10;
-            ButtonGeneric button = new ButtonGeneric(this.width - buttonWidth - 10, this.height - 26,
-                    buttonWidth, 20, label);
-            this.addButton(button, new ButtonListenerChangeMenu(ButtonListenerChangeMenu.ButtonType.MAIN_MENU, this.getParent()));
         }
+        this.addNavigationButtons();
     }
 
     protected void createSelectionEditFields()
@@ -163,28 +172,36 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
 
         this.addRenderingDisabledWarning(120, y + 2);
 
-        y = this.height - 26;
-
-        String label = StringUtils.translate("litematica.gui.button.clear_selection");
-        ButtonGeneric button = new ButtonGeneric(x, y, -1, 20, label);
-        button.setHoverStrings("litematica.gui.button.hover.clear_selection");
-        button.setEnabled(DataManager.getSchematicProjectsManager().hasProjectOpen() == false &&
-                DataManager.getSelectionManager().hasSelectionToClear());
-        x += this.addButton(button, (b, mouseButton) -> {
-            DataManager.getSelectionManager().clearCurrentSelection();
-            this.initGui();
-        }).getWidth() + 4;
-
-        this.createButton(x, y, -1, ButtonListener.Type.ANALYZE_AREA);
-
-        ButtonListenerChangeMenu.ButtonType type = ButtonListenerChangeMenu.ButtonType.MAIN_MENU;
-        label = StringUtils.translate(type.getLabelKey());
-        int buttonWidth = this.getStringWidth(label) + 10;
-        x = this.width - buttonWidth - 10;
-        button = new ButtonGeneric(x, y, buttonWidth, 20, label);
-        this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent()));
-
         return y;
+    }
+
+    protected void addNavigationButtons()
+    {
+        int x = 12;
+        int y = this.height - 26;
+        ButtonGeneric button;
+        if (!(this instanceof GuiAreaSelectionEditorSubRegion))
+        {
+            button = new ButtonGeneric(x, y, -1, 20,
+                    StringUtils.translate("litematica.gui.button.clear_selection"));
+            button.setHoverStrings("litematica.gui.button.hover.clear_selection");
+            button.setEnabled(DataManager.getSchematicProjectsManager().hasProjectOpen() == false &&
+                    DataManager.getSelectionManager().hasSelectionToClear());
+            x += this.addButton(button, (b, mouseButton) -> {
+                DataManager.getSelectionManager().clearCurrentSelection();
+                this.initGui();
+            }).getWidth() + 4;
+        }
+
+        if (!(this instanceof GuiAreaSelectionEditorSimple) && this.selection != null)
+        {
+            this.createButton(x, y, -1, ButtonListener.Type.ANALYZE_AREA);
+        }
+
+        String label = StringUtils.translate("litematica.gui.button.change_menu.to_main_menu");
+        int buttonWidth = this.getStringWidth(label) + 10;
+        button = new ButtonGeneric(this.width - buttonWidth - 10, y, buttonWidth, 20, label);
+        this.addButton(button, new ButtonListenerChangeMenu(ButtonListenerChangeMenu.ButtonType.MAIN_MENU, this.getParent()));
     }
 
     protected void addRenderingDisabledWarning(int x, int y)
@@ -475,7 +492,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
                 case CHANGE_SELECTION_MODE:
                     SelectionManager manager = DataManager.getSelectionManager();
                     manager.switchSelectionMode();
-                    manager.openEditGui(null);
+                    manager.openEditGui(this.parent.getParent());
                     return;
 
                 case CHANGE_CORNER_MODE:
@@ -632,15 +649,9 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         @Override
         public boolean setString(String string)
         {
-            boolean success = DataManager.getSelectionManager().createNewSubRegionIfDoesntExist(string, this.gui.mc, this.gui);
-
-            // If the editor was empty (no selection), reopen it so it shows the new selection.
-            if (success && this.gui.selection == null)
-            {
-                DataManager.getSelectionManager().openEditGui(this.gui.getParent());
-            }
-
-            return success;
+            // The input dialog returns to this parent after applying the value.
+            // initGui refreshes its model; opening another screen here gets overwritten.
+            return DataManager.getSelectionManager().createNewSubRegionIfDoesntExist(string, this.gui.mc, this.gui);
         }
     }
 
@@ -710,6 +721,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
     @Override
     public void onSelectionChange(String entry)
     {
+        if (this.selection == null) return;
         if (entry != null && entry.equals(this.selection.getCurrentSubRegionBoxName()))
         {
             this.selection.setSelectedSubRegionBox(null);

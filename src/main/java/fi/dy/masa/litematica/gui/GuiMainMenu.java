@@ -6,7 +6,6 @@ import net.minecraft.client.gui.screen.Screen;
 import fi.dy.masa.litematica.Reference;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.data.DataManager;
-import fi.dy.masa.litematica.selection.SelectionManager;
 import fi.dy.masa.litematica.selection.SelectionMode;
 import fi.dy.masa.litematica.tool.ToolMode;
 import fi.dy.masa.malilib.gui.GuiBase;
@@ -130,14 +129,6 @@ public class GuiMainMenu extends GuiBase
                 case AREA_EDITOR:
                     gui = DataManager.getSelectionManager().getEditGui();
 
-                    // Manual mode with nothing selected still opens the menu:
-                    // an empty multi-box editor with mode toggle and Add Box.
-                    if (gui == null &&
-                            DataManager.getSelectionManager().getSelectionMode() == SelectionMode.NORMAL &&
-                            !DataManager.getSchematicProjectsManager().hasProjectOpen())
-                    {
-                        gui = new GuiAreaSelectionEditorNormal(null);
-                    }
                     break;
                 case AREA_SELECTION_BROWSER:
                     gui = new GuiAreaSelectionManager();

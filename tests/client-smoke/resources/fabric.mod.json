@@ -1,0 +1,1 @@
+{"schemaVersion":1,"id":"liteux_smoke","version":"1.0.0","name":"liteUX UI smoke check","environment":"client","entrypoints":{"client":["liteux.Smoke"]}}

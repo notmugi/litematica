@@ -1,0 +1,1 @@
+allprojects { apply from: 'tests/client-smoke/smoke.gradle' }

@@ -1,0 +1,25 @@
+// Isolated development-only mod. Not included in normal builds or the release jar.
+afterEvaluate {
+    sourceSets {
+        uxSmoke {
+            java.srcDir 'tests/client-smoke/src'
+            resources.srcDir 'tests/client-smoke/resources'
+            compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+            runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+        }
+    }
+    loom {
+        mods { liteux_smoke { sourceSet sourceSets.uxSmoke } }
+        runs {
+            uxSmoke {
+                client()
+                name 'liteUX screen smoke check'
+                source sourceSets.uxSmoke
+                runDir 'build/ux-smoke/run'
+                vmArg '-ea'
+                vmArg '-Djava.io.tmpdir=' + file('.work').absolutePath
+                programArgs '--width', '960', '--height', '720'
+            }
+        }
+    }
+}
