@@ -50,7 +50,7 @@ public class GuiGhosts extends GuiUxBase implements ISelectionListener<Schematic
         GuiMainMenu.action(this, 18 + half, 28, half, 20, StringUtils.translate("litematica.gui.baby.ghosts.loaded"),
                 "litematica.gui.baby.ghosts.loaded.tip", () -> this.showTab(true)).setEnabled(!this.loaded);
         GuiMainMenu.label(this, 12, 52, width, this.loaded ? "litematica.gui.baby.ghosts.loaded_help" : "litematica.gui.baby.ghosts.help");
-        GuiMainMenu.action(this, 12, this.height - 26, width, 20, StringUtils.translate("litematica.gui.ux.back"),
+        GuiMainMenu.action(this, 18 + half, this.height - 26, half, 20, StringUtils.translate("litematica.gui.ux.back"),
                 "litematica.gui.ux.back.tip", () -> this.closeGui(true));
     }
 
