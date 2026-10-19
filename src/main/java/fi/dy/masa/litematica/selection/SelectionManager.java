@@ -418,6 +418,17 @@ public class SelectionManager
         SelectionManager sm = DataManager.getSelectionManager();
         AreaSelection selection = sm.getCurrentSelection();
 
+        // No selection at all in manual mode: create one named after this box.
+        // This only happens via the user clicking "Add Box" in the editor.
+        if (selection == null && sm.getSelectionMode() == SelectionMode.NORMAL &&
+                !DataManager.getSchematicProjectsManager().hasProjectOpen())
+        {
+            sm.createNewSelection(DataManager.getAreaSelectionsBaseDirectory(), name);
+
+            // The new selection already contains a box with this name.
+            return sm.getCurrentSelection() != null;
+        }
+
         if (selection != null && mc.player != null)
         {
             if (selection.getSubRegionBox(name) != null)

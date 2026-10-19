@@ -630,7 +630,15 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         @Override
         public boolean setString(String string)
         {
-            return DataManager.getSelectionManager().createNewSubRegionIfDoesntExist(string, this.gui.mc, this.gui);
+            boolean success = DataManager.getSelectionManager().createNewSubRegionIfDoesntExist(string, this.gui.mc, this.gui);
+
+            // If the editor was empty (no selection), reopen it so it shows the new selection.
+            if (success && this.gui.selection == null)
+            {
+                GuiSaveSelection.open(this.gui.getParent());
+            }
+
+            return success;
         }
     }
 
