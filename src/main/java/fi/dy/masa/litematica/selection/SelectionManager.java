@@ -421,6 +421,17 @@ public class SelectionManager
         SelectionManager sm = DataManager.getSelectionManager();
         AreaSelection selection = sm.getCurrentSelection();
 
+        // No selection at all in manual mode: create one named after this box.
+        // This only happens via the user clicking "Add Box" in the editor.
+        if (selection == null && sm.getSelectionMode() == SelectionMode.NORMAL &&
+                !DataManager.getSchematicProjectsManager().hasProjectOpen())
+        {
+            sm.createNewSelection(DataManager.getAreaSelectionsBaseDirectory(), name);
+
+            // The new selection already contains a box with this name.
+            return sm.getCurrentSelection() != null;
+        }
+
         if (selection != null && mc.player != null)
         {
             if (selection.getSubRegionBox(name) != null)
@@ -768,11 +779,8 @@ public class SelectionManager
             {
                 return new GuiAreaSelectionEditorNormal(selection);
             }
-            else
-            {
-                InfoUtils.showGuiOrActionBarMessage(MessageType.WARNING, "litematica.error.area_editor.open_gui.no_selection");
-                return null;
-            }
+            // Manual mode with nothing selected: open the empty multi-box editor.
+            return new GuiAreaSelectionEditorNormal(null);
         }
         else
         {

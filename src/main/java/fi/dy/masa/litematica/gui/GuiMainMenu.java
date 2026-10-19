@@ -10,7 +10,6 @@ import fi.dy.masa.litematica.selection.SelectionManager;
 import fi.dy.masa.litematica.selection.SelectionMode;
 import fi.dy.masa.litematica.tool.ToolMode;
 import fi.dy.masa.malilib.gui.GuiBase;
-import fi.dy.masa.malilib.gui.GuiTextInput;
 import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
@@ -131,28 +130,13 @@ public class GuiMainMenu extends GuiBase
                 case AREA_EDITOR:
                     gui = DataManager.getSelectionManager().getEditGui();
 
-                    // Manual mode needs a named selection but the saved-selections browser is
-                    // gone: prompt for a name instead of leaving the user on a warning loop.
-                    // Nothing is created unless the user confirms.
+                    // Manual mode with nothing selected still opens the menu:
+                    // an empty multi-box editor with mode toggle and Add Box.
                     if (gui == null &&
                             DataManager.getSelectionManager().getSelectionMode() == SelectionMode.NORMAL &&
                             !DataManager.getSchematicProjectsManager().hasProjectOpen())
                     {
-                        SelectionManager manager = DataManager.getSelectionManager();
-                        @Nullable Screen parent = this.parent;
-                        GuiTextInput input = new GuiTextInput(256, "litematica.gui.title.create_area_selection", "",
-                                parent, string -> {
-                                    manager.createNewSelection(DataManager.getAreaSelectionsBaseDirectory(), string);
-                                    GuiBase editor = manager.getEditGui();
-
-                                    if (editor != null)
-                                    {
-                                        editor.setParent(parent);
-                                        GuiBase.openGui(editor);
-                                    }
-                                });
-                        input.setParent(parent);
-                        GuiBase.openGui(input);
+                        gui = new GuiAreaSelectionEditorNormal(null);
                     }
                     break;
                 case AREA_SELECTION_BROWSER:

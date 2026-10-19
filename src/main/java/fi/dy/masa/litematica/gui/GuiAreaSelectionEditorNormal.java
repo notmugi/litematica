@@ -86,7 +86,20 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         }
         else
         {
-            this.addLabel(20, 30, 120, 12, 0xFFFFAA00, StringUtils.translate("litematica.error.area_editor.no_selection"));
+            // No selection yet: still open the menu. Add Box creates the selection
+            // on demand, and the mode button still works.
+            int bx = 12;
+            int by = 24;
+            bx += this.createButton(bx, by, -1, ButtonListener.Type.CHANGE_SELECTION_MODE) + 4;
+            bx += this.createButton(bx, by, -1, ButtonListener.Type.CREATE_SUB_REGION) + 4;
+            this.addLabel(bx, by, this.width - bx - 20, 20, 0xFFFFAA00,
+                    StringUtils.translate("litematica.error.area_editor.no_selection"));
+
+            String label = StringUtils.translate(ButtonListenerChangeMenu.ButtonType.MAIN_MENU.getLabelKey());
+            int buttonWidth = this.getStringWidth(label) + 10;
+            ButtonGeneric button = new ButtonGeneric(this.width - buttonWidth - 10, this.height - 26,
+                    buttonWidth, 20, label);
+            this.addButton(button, new ButtonListenerChangeMenu(ButtonListenerChangeMenu.ButtonType.MAIN_MENU, this.getParent()));
         }
     }
 
@@ -461,20 +474,9 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
 
                 case CHANGE_SELECTION_MODE:
                     SelectionManager manager = DataManager.getSelectionManager();
-                    SelectionMode newMode = manager.getSelectionMode().cycle(true);
-
-                    if (newMode == SelectionMode.NORMAL && manager.hasNormalSelection() == false)
-                    {
-                        this.parent.addMessage(MessageType.WARNING, "litematica.error.area_editor.switch_mode.no_selection");
-                    }
-                    else
-                    {
-                        manager.switchSelectionMode();
-                        manager.openEditGui(null);
-                        return;
-                    }
-
-                    break;
+                    manager.switchSelectionMode();
+                    manager.openEditGui(null);
+                    return;
 
                 case CHANGE_CORNER_MODE:
                     Configs.Generic.SELECTION_CORNERS_MODE.setOptionListValue(Configs.Generic.SELECTION_CORNERS_MODE.getOptionListValue().cycle(false));
@@ -630,7 +632,15 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         @Override
         public boolean setString(String string)
         {
-            return DataManager.getSelectionManager().createNewSubRegionIfDoesntExist(string, this.gui.mc, this.gui);
+            boolean success = DataManager.getSelectionManager().createNewSubRegionIfDoesntExist(string, this.gui.mc, this.gui);
+
+            // If the editor was empty (no selection), reopen it so it shows the new selection.
+            if (success && this.gui.selection == null)
+            {
+                DataManager.getSelectionManager().openEditGui(this.gui.getParent());
+            }
+
+            return success;
         }
     }
 
