@@ -59,7 +59,7 @@ public class GuiSchematicManager extends GuiSchematicBrowserBase implements ISel
     @Override
     protected int getBrowserHeight()
     {
-        return this.getScreenHeight() - 60;
+        return this.getScreenHeight() - 84;
     }
 
     @Override
@@ -73,7 +73,7 @@ public class GuiSchematicManager extends GuiSchematicBrowserBase implements ISel
     private void createButtons()
     {
         int x = 10;
-        int y = this.getScreenHeight() - 26;
+        int y = this.getScreenHeight() - 50;
 
 		if (this.getListWidget() == null) return;
         DirectoryEntry selected = this.getListWidget().getLastSelectedEntry();
@@ -107,10 +107,31 @@ public class GuiSchematicManager extends GuiSchematicBrowserBase implements ISel
             }
 		}
 
+        // Keep directory/navigation actions separate from selection-specific file operations.
+        y = this.getScreenHeight() - 26;
+        String openLabel = StringUtils.translate("litematica.gui.button.open_schematics_directory");
+        this.addButton(new ButtonGeneric(10, y, this.getStringWidth(openLabel) + 10, 20, openLabel),
+                (button, mouseButton) -> this.openSchematicsDirectory());
+
         ButtonListenerChangeMenu.ButtonType type = ButtonListenerChangeMenu.ButtonType.MAIN_MENU;
         String label = StringUtils.translate(type.getLabelKey());
         int buttonWidth = this.getStringWidth(label) + 20;
         this.addButton(new ButtonGeneric(this.getScreenWidth() - buttonWidth - 10, y, buttonWidth, 20, label), new ButtonListenerChangeMenu(type, null));
+    }
+
+    private void openSchematicsDirectory()
+    {
+        Path directory = DataManager.getSchematicsBaseDirectory();
+        try
+        {
+            Files.createDirectories(directory);
+            net.minecraft.util.Util.getPlatform().openPath(directory);
+        }
+        catch (java.io.IOException | RuntimeException e)
+        {
+            Litematica.LOGGER.warn("Failed to open schematics directory '{}'", directory, e);
+            this.addMessage(MessageType.ERROR, "litematica.error.open_schematics_directory", directory.toString());
+        }
     }
 
     @Override
