@@ -152,21 +152,19 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
 
         y = this.height - 26;
 
-        ButtonListenerChangeMenu.ButtonType type = ButtonListenerChangeMenu.ButtonType.AREA_SELECTION_BROWSER;
-        String label = StringUtils.translate(type.getLabelKey());
-        ButtonGeneric button = new ButtonGeneric(x, y, -1, 20, label, type.getIcon());
-
-        if (DataManager.getSchematicProjectsManager().hasProjectOpen())
-        {
-            button.setEnabled(false);
-            button.setHoverStrings("litematica.gui.button.hover.schematic_projects.area_browser_disabled_currently_in_projects_mode");
-        }
-
-        x += this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent())).getWidth() + 4;
+        String label = StringUtils.translate("litematica.gui.button.clear_selection");
+        ButtonGeneric button = new ButtonGeneric(x, y, -1, 20, label);
+        button.setHoverStrings("litematica.gui.button.hover.clear_selection");
+        button.setEnabled(DataManager.getSchematicProjectsManager().hasProjectOpen() == false &&
+                DataManager.getSelectionManager().hasSelectionToClear());
+        x += this.addButton(button, (b, mouseButton) -> {
+            DataManager.getSelectionManager().clearCurrentSelection();
+            this.initGui();
+        }).getWidth() + 4;
 
         this.createButton(x, y, -1, ButtonListener.Type.ANALYZE_AREA);
 
-        type = ButtonListenerChangeMenu.ButtonType.MAIN_MENU;
+        ButtonListenerChangeMenu.ButtonType type = ButtonListenerChangeMenu.ButtonType.MAIN_MENU;
         label = StringUtils.translate(type.getLabelKey());
         int buttonWidth = this.getStringWidth(label) + 10;
         x = this.width - buttonWidth - 10;

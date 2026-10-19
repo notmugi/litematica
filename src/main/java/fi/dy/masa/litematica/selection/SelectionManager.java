@@ -323,6 +323,37 @@ public class SelectionManager
         }
     }
 
+    public boolean hasSelectionToClear()
+    {
+        if (this.mode == SelectionMode.NORMAL)
+        {
+            return this.grabbedElement != null || this.getCurrentNormalSelectionId() != null;
+        }
+
+        AreaSelectionSimple simple = DataManager.getSimpleArea();
+        Box box = simple.getSelectedSubRegionBox();
+
+        return this.grabbedElement != null || simple.getExplicitOrigin() != null ||
+                (box != null && (box.getPos1() != null || box.getPos2() != null));
+    }
+
+    /** User action, unlike setCurrentSelection which only changes the named-selection ID. */
+    public void clearCurrentSelection()
+    {
+        this.releaseGrabbedElement();
+
+        if (this.mode == SelectionMode.SIMPLE)
+        {
+            // Replace the simple selection with a fresh one to clear its geometry and origin.
+            DataManager.setSimpleArea(new AreaSelectionSimple(true));
+        }
+        else
+        {
+            // Unselect named areas without deleting their saved boxes/files.
+            this.setCurrentSelection(null);
+        }
+    }
+
     /**
      * Creates a new schematic selection and returns the name of it
      * @return ()

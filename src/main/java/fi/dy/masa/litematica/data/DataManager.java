@@ -277,6 +277,11 @@ public class DataManager implements IDirectoryCache
         return getInstance().areaSimple;
     }
 
+    public static void setSimpleArea(AreaSelectionSimple area)
+    {
+        getInstance().areaSimple = area;
+    }
+
     @Override
     @Nullable
     public File getCurrentDirectoryForContext(String context)
