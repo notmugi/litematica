@@ -45,5 +45,5 @@ assert 'next.cycle(this.mc.player, true)' in picker
 assert 'button.setEnabled(allowed.contains(mode))' in picker
 assert 'this.availableModes().contains(mode)' in picker
 assert 'Configs.saveToFile()' in (base / 'GuiUxHelp.java').read_text()
-assert 'GuiAreaSelectionManager' not in (base / 'GuiSaveSelection.java').read_text()
+assert 'hasProjectOpen()' in (base / 'GuiSaveSelection.java').read_text()
 print('PASS: home layouts at 36 Minecraft GUI sizes, translation coverage, picker/gating/persistence invariants')
