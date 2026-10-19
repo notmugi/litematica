@@ -21,7 +21,6 @@ import fi.dy.masa.malilib.util.position.PositionUtils.CoordinateType;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.config.Hotkeys;
 import fi.dy.masa.litematica.data.DataManager;
-import fi.dy.masa.litematica.gui.GuiMainMenu.ButtonListenerChangeMenu;
 import fi.dy.masa.litematica.gui.widgets.WidgetListSelectionSubRegions;
 import fi.dy.masa.litematica.gui.widgets.WidgetSelectionSubRegion;
 import fi.dy.masa.litematica.materials.MaterialListAreaAnalyzer;
@@ -159,16 +158,15 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         ButtonGeneric button;
         if (!(this instanceof GuiAreaSelectionEditorSubRegion))
         {
-            ButtonListenerChangeMenu.ButtonType type = ButtonListenerChangeMenu.ButtonType.AREA_SELECTION_BROWSER;
-            button = new ButtonGeneric(x, y, -1, 20, StringUtils.translate(type.getLabelKey()), type.getIcon());
-
-            if (DataManager.getSchematicProjectsManager().hasProjectOpen())
-            {
-                button.setEnabled(false);
-                button.setHoverStrings("litematica.gui.button.hover.schematic_projects.area_browser_disabled_currently_in_projects_mode");
-            }
-
-            x += this.addButton(button, (b, mouseButton) -> this.openSelectionBrowser()).getWidth() + 4;
+            button = new ButtonGeneric(x, y, -1, 20,
+                    StringUtils.translate("litematica.gui.baby.ghosts.clear"));
+            button.setHoverStrings("litematica.gui.baby.ghosts.clear.tip");
+            button.setEnabled(DataManager.getSchematicProjectsManager().hasProjectOpen() == false &&
+                    DataManager.getSelectionManager().hasSelectionToClear());
+            x += this.addButton(button, (b, mouseButton) -> {
+                DataManager.getSelectionManager().clearCurrentSelection();
+                this.initGui();
+            }).getWidth() + 4;
         }
 
         if (!(this instanceof GuiAreaSelectionEditorSimple) && this.selection != null)
@@ -180,24 +178,6 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         int buttonWidth = this.getStringWidth(label) + 10;
         button = new ButtonGeneric(this.getScreenWidth() - buttonWidth - 10, y, buttonWidth, 20, label);
         this.addButton(button, (b, mouseButton) -> this.closeGui(true));
-    }
-
-    protected void openSelectionBrowser()
-    {
-        if (!DataManager.getSchematicProjectsManager().hasProjectOpen())
-        {
-            // Replace the editor step: returning from the browser must not revive a stale selection editor.
-            if (this.getParent() instanceof GuiAreaSelectionManager browser)
-            {
-                GuiBase.openGui(browser);
-            }
-            else
-            {
-                GuiAreaSelectionManager browser = new GuiAreaSelectionManager();
-                browser.setParent(this.getParent());
-                GuiBase.openGui(browser);
-            }
-        }
     }
 
     protected void addRenderingDisabledWarning(int x, int y)
