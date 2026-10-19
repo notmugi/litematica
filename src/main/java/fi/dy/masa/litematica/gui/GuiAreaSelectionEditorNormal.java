@@ -82,10 +82,16 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         }
         else
         {
-            this.addLabel(20, 30, 120, 12, 0xFFFFAA00, StringUtils.translate("litematica.error.area_editor.no_selection"));
+            // No selection yet: still offer everything needed to proceed here -
+            // switch modes, or create the first box (which creates the selection).
+            int bx = 12;
+            int by = 24;
+            bx += this.createButton(bx, by, -1, ButtonListener.Type.CHANGE_SELECTION_MODE) + 4;
+            bx += this.createButton(bx, by, -1, ButtonListener.Type.CREATE_SUB_REGION) + 4;
+            this.addLabel(bx + 6, by, this.getScreenWidth() - bx - 26, 20, 0xFFFFAA00,
+                    StringUtils.translate("litematica.error.area_editor.no_selection"));
+            this.addNavigationButtons();
         }
-
-        this.addNavigationButtons();
     }
 
     protected void createSelectionEditFields()
