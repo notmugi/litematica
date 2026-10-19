@@ -38,7 +38,8 @@ public class WidgetListSelectionSubRegions extends WidgetListBase<String, Widget
     @Override
     protected Collection<String> getAllEntries()
     {
-        return this.selection.getAllSubRegionNames();
+        // The editor can be opened with no selection at all.
+        return this.selection != null ? this.selection.getAllSubRegionNames() : java.util.Collections.emptyList();
     }
 
     @Override
