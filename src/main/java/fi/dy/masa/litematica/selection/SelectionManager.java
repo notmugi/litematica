@@ -764,6 +764,14 @@ public class SelectionManager
 
         if (this.getSelectionMode() == SelectionMode.NORMAL)
         {
+            // Manual mode without a current selection still opens the full editor;
+            // create a default named selection (the saved-selections browser stays removed).
+            if (selection == null && !DataManager.getSchematicProjectsManager().hasProjectOpen())
+            {
+                this.createNewSelection(DataManager.getAreaSelectionsBaseDirectory(), "selection");
+                selection = this.getCurrentSelection();
+            }
+
             if (selection != null)
             {
                 return new GuiAreaSelectionEditorNormal(selection);
