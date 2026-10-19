@@ -85,9 +85,15 @@ public class GuiConfigs extends GuiConfigsBase
                 StringUtils.translate("litematica.gui.button.ux.reset_group"), "litematica.gui.hover.ux.reset_group"),
                 (button, mouseButton) -> this.confirmReset());
 
+        String back = StringUtils.translate("litematica.gui.ux.back");
+        int backWidth = this.getStringWidth(back) + 10;
+        this.addButton(new ButtonGeneric(this.width - backWidth - 10, this.height - 26,
+                backWidth, 20, back), (button, mouseButton) -> this.closeGui(true));
+
         String searchHint = StringUtils.translate("litematica.gui.label.ux.search_all_settings");
-        this.addWidget(new WidgetLabel(10, this.height - 20, available + 10, 14, 0xFFB6C7D6,
-                this.font.plainSubstrByWidth(searchHint, Math.max(1, available + 10))));
+        int hintWidth = Math.max(1, available - backWidth - 8);
+        this.addWidget(new WidgetLabel(10, this.height - 20, hintWidth, 14, 0xFFB6C7D6,
+                this.font.plainSubstrByWidth(searchHint, hintWidth)));
     }
 
     @Override
