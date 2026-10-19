@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** Both category and inherited mod selectors; do not alter other mods' screens. */
 @Mixin(value = WidgetDropDownList.class, remap = false)
-public abstract class MixinWidgetDropDownList
+public abstract class MixinWidgetDropDownList implements fi.dy.masa.litematica.gui.DropdownOverlay
 {
     @Shadow protected boolean isOpen;
     @Shadow @Final protected int maxVisibleEntries;
@@ -26,6 +26,17 @@ public abstract class MixinWidgetDropDownList
     @Shadow @Final protected TextFieldWrapper<GuiTextFieldGeneric> searchBar;
     @Shadow @Final protected GuiScrollBar scrollBar;
     @Shadow protected abstract void updateFilteredEntries();
+
+    @Override
+    public boolean litematica$isOpen() { return this.isOpen; }
+
+    @Override
+    public int litematica$popupBottom()
+    {
+        var widget = (WidgetDropDownList<?>) (Object) this;
+        return widget.getY() + widget.getHeight() *
+                (1 + Math.min(this.maxVisibleEntries, this.filteredEntries.size())) + 1;
+    }
 
     @Unique
     private boolean litematica$isOurScreen()

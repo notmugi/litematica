@@ -42,6 +42,87 @@ public class GuiConfigs extends GuiConfigsBase
         super(10, 50, Reference.MOD_ID, null, "litematica.gui.title.configs", Reference.MOD_VERSION);
     }
 
+    private WidgetDropDownList<ConfigGuiTab> categoryDropdown;
+
+    /** Open popups own the foreground and input, not the config rows below them. */
+    private WidgetDropDownList<?> openDropdown()
+    {
+        for (WidgetBase widget : new WidgetBase[] { this.categoryDropdown, this.modSwitchWidget })
+        {
+            if (widget instanceof WidgetDropDownList<?> dropdown &&
+                    ((DropdownOverlay) dropdown).litematica$isOpen()) return dropdown;
+        }
+        return null;
+    }
+
+    @Override
+    public void render(DrawContext ctx, int mouseX, int mouseY, float partialTicks)
+    {
+        super.render(ctx, mouseX, mouseY, partialTicks);
+        WidgetDropDownList<?> popup = this.openDropdown();
+        if (popup == null) return;
+
+        // Legacy malilib draws the list AFTER screen widgets, then its row tooltips
+        // AFTER the hovered screen widget. Its immediate backgrounds and buffered
+        // text also use different matrices. Flush and raise BOTH before drawing
+        // the popup as the final, opaque foreground layer.
+        ctx.draw();
+        var modelView = com.mojang.blaze3d.systems.RenderSystem.getModelViewStack();
+        modelView.pushMatrix();
+        modelView.translate(0, 0, 400);
+        ctx.getMatrices().push();
+        ctx.getMatrices().translate(0, 0, 400);
+        com.mojang.blaze3d.systems.RenderSystem.applyModelViewMatrix();
+        try
+        {
+            int bottom = ((DropdownOverlay) popup).litematica$popupBottom();
+            fi.dy.masa.malilib.render.RenderUtils.drawRect(popup.getX(), popup.getY(),
+                    popup.getWidth(), bottom - popup.getY(), 0xFF101010);
+            popup.render(mouseX, mouseY, false, ctx);
+            ctx.draw();
+        }
+        finally
+        {
+            ctx.getMatrices().pop();
+            modelView.popMatrix();
+            com.mojang.blaze3d.systems.RenderSystem.applyModelViewMatrix();
+        }
+    }
+
+    @Override
+    protected void drawHoveredWidget(int mouseX, int mouseY, DrawContext ctx)
+    {
+        // A row tooltip must not paint over a popup covering that row.
+        if (this.openDropdown() == null) super.drawHoveredWidget(mouseX, mouseY, ctx);
+    }
+
+    @Override
+    protected void drawButtonHoverTexts(int mouseX, int mouseY, float partialTicks, DrawContext ctx)
+    {
+        if (this.openDropdown() == null) super.drawButtonHoverTexts(mouseX, mouseY, partialTicks, ctx);
+    }
+
+    @Override
+    public boolean onMouseClicked(int mouseX, int mouseY, int button)
+    {
+        WidgetDropDownList<?> popup = this.openDropdown();
+        if (popup != null && popup.isMouseOver(mouseX, mouseY))
+            return popup.onMouseClicked(mouseX, mouseY, button);
+        return super.onMouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean onMouseScrolled(int mouseX, int mouseY, double horizontal, double vertical)
+    {
+        WidgetDropDownList<?> popup = this.openDropdown();
+        if (popup != null && popup.isMouseOver(mouseX, mouseY))
+        {
+            popup.onMouseScrolled(mouseX, mouseY, horizontal, vertical);
+            return true;
+        }
+        return super.onMouseScrolled(mouseX, mouseY, horizontal, vertical);
+    }
+
     /** Direct entry point for the home screen's Keys button. */
     public static void openHotkeys(Screen parent)
     {
@@ -78,6 +159,7 @@ public class GuiConfigs extends GuiConfigsBase
             }
         };
         // The object overload initializes selection without invoking the click/index callback.
+        this.categoryDropdown = groups;
         groups.setSelectedEntry(DataManager.getConfigGuiTab());
         this.addWidget(groups);
         this.addButton(new UxButton(10 + available - resetWidth, 26, resetWidth, 20,
