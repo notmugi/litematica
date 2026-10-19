@@ -325,30 +325,25 @@ public class SelectionManager
 
     public boolean hasSelectionToClear()
     {
-        if (this.mode == SelectionMode.NORMAL)
-        {
-            return this.grabbedElement != null || this.getCurrentNormalSelectionId() != null;
-        }
-
-        AreaSelectionSimple simple = DataManager.getSimpleArea();
-        Box box = simple.getSelectedSubRegionBox();
-
-        return this.grabbedElement != null || simple.getExplicitOrigin() != null ||
-                (box != null && (box.getPos1() != null || box.getPos2() != null));
+        AreaSelection area = this.getCurrentSelection();
+        return this.grabbedElement != null || (area != null && area.hasSelectionGeometry());
     }
 
     /** User action, unlike setCurrentSelection which only changes the named-selection ID. */
     public void clearCurrentSelection()
     {
         this.releaseGrabbedElement();
-
-        if (this.mode == SelectionMode.SIMPLE)
+        SchematicProject project = DataManager.getSchematicProjectsManager().getCurrentProject();
+        if (DataManager.getSchematicProjectsManager().hasProjectOpen() && project != null)
         {
-            // Replace the simple selection with a fresh one to clear its geometry and origin.
-            DataManager.setSimpleArea(new AreaSelectionSimple(true));
+            project.clearSelectionGeometry();
         }
         else
         {
+            if (this.mode == SelectionMode.SIMPLE)
+            {
+                this.getSimpleSelection().clearSelectionGeometry();
+            }
             // Unselect named areas without deleting their saved boxes/files.
             this.setCurrentSelection(null);
         }

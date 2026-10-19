@@ -54,19 +54,23 @@ public class RenderHandler implements IRenderer
     {
         MinecraftClient mc = MinecraftClient.getInstance();
 
+        if (mc.player != null && GuiUtils.getCurrentScreen() == null && !mc.options.hudHidden)
+        {
+            ToolHud.getInstance().renderHud(drawContext, mc.getProfiler());
+        }
         if (Configs.Visuals.ENABLE_RENDERING.getBooleanValue() && mc.player != null)
         {
             Profiler profiler = mc.getProfiler();
 
             profiler.push("overlay_hud");
             // The Info HUD renderers can decide if they want to be rendered in GUIs
-            InfoHud.getInstance().renderHud(drawContext, profiler);
+            InfoHud.getInstance().renderHud(drawContext, mc.getProfiler());
 
             if (GuiUtils.getCurrentScreen() == null)
             {
                 if (mc.options.hudHidden == false)
                 {
-                    ToolHud.getInstance().renderHud(drawContext, profiler);
+
                     profiler.swap("overlay_hover_info");
                     OverlayRenderer.getInstance().renderHoverInfo(mc, drawContext, profiler);
                 }

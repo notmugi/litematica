@@ -10,14 +10,12 @@ import fi.dy.masa.litematica.schematic.projects.SchematicVersion;
 import fi.dy.masa.litematica.selection.SelectionManager;
 import fi.dy.masa.litematica.util.SchematicUtils;
 import fi.dy.masa.malilib.gui.GuiBase;
-import fi.dy.masa.malilib.gui.GuiConfirmAction;
 import fi.dy.masa.malilib.gui.GuiListBase;
 import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
 import fi.dy.masa.malilib.gui.interfaces.ISelectionListener;
 import fi.dy.masa.malilib.interfaces.ICompletionListener;
-import fi.dy.masa.malilib.interfaces.IConfirmationListener;
 import fi.dy.masa.malilib.util.GuiUtils;
 import fi.dy.masa.malilib.util.StringUtils;
 
@@ -158,19 +156,13 @@ public class GuiSchematicProjectManager extends GuiListBase<SchematicVersion, Wi
             }
             else if (this.type == Type.PLACE_TO_WORLD)
             {
-                PlaceToWorldExecutor executor = new PlaceToWorldExecutor();
-                String title = "litematica.gui.title.schematic_projects.confirm_place_to_world";
-                String msg = "litematica.gui.message.schematic_projects.confirm_place_to_world";
-                GuiConfirmAction gui = new GuiConfirmAction(320, title, executor, this.gui, msg);
-                GuiBase.openGui(gui);
+                if (DataManager.getSchematicProjectsManager().getCurrentProject() == this.gui.project)
+                    this.gui.project.pasteToWorld();
             }
             else if (this.type == Type.DELETE_AREA)
             {
-                DeleteAreaExecutor executor = new DeleteAreaExecutor();
-                String title = "litematica.gui.title.schematic_projects.confirm_delete_area";
-                String msg = "litematica.gui.message.schematic_projects.confirm_delete_area";
-                GuiConfirmAction gui = new GuiConfirmAction(320, title, executor, this.gui, msg);
-                GuiBase.openGui(gui);
+                if (DataManager.getSchematicProjectsManager().getCurrentProject() == this.gui.project)
+                    this.gui.project.deleteLastSeenArea(MinecraftClient.getInstance());
             }
             else if (this.type == Type.MOVE_ORIGIN)
             {
@@ -227,35 +219,4 @@ public class GuiSchematicProjectManager extends GuiListBase<SchematicVersion, Wi
         }
     }
 
-    public static class PlaceToWorldExecutor implements IConfirmationListener
-    {
-        @Override
-        public boolean onActionConfirmed()
-        {
-            DataManager.getSchematicProjectsManager().pasteCurrentVersionToWorld();
-            return true;
-        }
-
-        @Override
-        public boolean onActionCancelled()
-        {
-            return false;
-        }
-    }
-
-    public static class DeleteAreaExecutor implements IConfirmationListener
-    {
-        @Override
-        public boolean onActionConfirmed()
-        {
-            DataManager.getSchematicProjectsManager().deleteLastSeenArea(MinecraftClient.getInstance());
-            return true;
-        }
-
-        @Override
-        public boolean onActionCancelled()
-        {
-            return false;
-        }
-    }
 }

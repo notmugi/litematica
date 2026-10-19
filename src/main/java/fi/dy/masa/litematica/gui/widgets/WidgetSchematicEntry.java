@@ -45,33 +45,22 @@ public class WidgetSchematicEntry extends WidgetListEntryBase<LitematicaSchemati
         this.parent = parent;
         this.schematic = schematic;
         this.isOdd = isOdd;
-        y += 1;
-
-        int posX = x + width;
-
-        posX -= this.addButton(posX, y, ButtonListener.Type.UNLOAD);
-        posX -= this.addButton(posX, y, ButtonListener.Type.RELOAD);
-        posX -= this.addButton(posX, y, ButtonListener.Type.SAVE_TO_FILE);
-        posX -= this.addButton(posX, y, ButtonListener.Type.CREATE_PLACEMENT);
-
-        this.buttonsStartX = posX;
+        // Separate the name from its actions instead of squeezing four buttons over it.
+        int buttonWidth = (width - 10) / 4;
+        ButtonListener.Type[] actions = { ButtonListener.Type.CREATE_PLACEMENT,
+                ButtonListener.Type.SAVE_TO_FILE, ButtonListener.Type.RELOAD, ButtonListener.Type.UNLOAD };
+        for (int i = 0; i < actions.length; ++i)
+        {
+            ButtonListener.Type type = actions[i];
+            ButtonGeneric button = new fi.dy.masa.litematica.gui.UxButton(x + 2 + i * (buttonWidth + 2),
+                    y + 21, buttonWidth, 20, type.getDisplayName());
+            button.setHoverStrings(type.getDisplayName(), type.getHoverKey() == null ? "" : StringUtils.translate(type.getHoverKey()));
+            if (type == ButtonListener.Type.RELOAD) button.setEnabled(schematic.getFile() != null);
+            this.addButton(button, new ButtonListener(type, this));
+        }
+        this.buttonsStartX = this.x + width - 2;
         this.typeIconX = this.x + 2;
         this.typeIconY = y + 4;
-    }
-
-    private int addButton(int x, int y, ButtonListener.Type type)
-    {
-        ButtonListener listener = new ButtonListener(type, this);
-        ButtonGeneric button = new ButtonGeneric(x, y, -1, true, type.getDisplayName());
-
-        if (type.getHoverKey() != null)
-        {
-            button.setHoverStrings(type.getHoverKey());
-        }
-
-        this.addButton(button, listener);
-
-        return button.getWidth() + 2;
     }
 
     @Override
@@ -97,7 +86,7 @@ public class WidgetSchematicEntry extends WidgetListEntryBase<LitematicaSchemati
         boolean modified = this.schematic.getMetadata().wasModifiedSinceSaved();
         String schematicName = this.schematic.getMetadata().getName();
         int color = modified ? 0xFFFF9010 : 0xFFFFFFFF;
-        this.drawString(this.x + 20, this.y + 7, color, schematicName, drawContext);
+        this.drawString(this.x + 20, this.y + 7, color, this.textRenderer.trimToWidth(schematicName, Math.max(1, this.width - 38)), drawContext);
 
         RenderUtils.color(1f, 1f, 1f, 1f);
         RenderSystem.disableBlend();
@@ -187,6 +176,9 @@ public class WidgetSchematicEntry extends WidgetListEntryBase<LitematicaSchemati
                 SchematicPlacement placement = SchematicPlacement.createFor(entry, pos, name, enabled, enabled);
                 manager.addSchematicPlacement(placement, true);
                 manager.setSelectedSchematicPlacement(placement);
+                var gui = new fi.dy.masa.litematica.gui.GuiPlacementConfiguration(placement);
+                gui.setParent(GuiUtils.getCurrentScreen());
+                GuiBase.openGui(gui);
             }
             else if (this.type == Type.SAVE_TO_FILE)
             {
@@ -195,17 +187,30 @@ public class WidgetSchematicEntry extends WidgetListEntryBase<LitematicaSchemati
                 gui.setParent(GuiUtils.getCurrentScreen());
                 GuiBase.openGui(gui);
             }
-            else if (this.type == Type.RELOAD)
-            {
-                this.widget.schematic.readFromFile();
-                SchematicPlacementManager manager = DataManager.getSchematicPlacementManager();
-                manager.getAllPlacementsOfSchematic(this.widget.schematic).forEach(manager::markChunksForRebuild);
-            }
-            else if (this.type == Type.UNLOAD)
-            {
-                SchematicHolder.getInstance().removeSchematic(this.widget.schematic);
-                this.widget.parent.refreshEntries();
-            }
+			else if (this.type == Type.RELOAD)
+			{
+                Runnable reload = () -> {
+                    if (this.widget.schematic.readFromFile())
+                    {
+                        SchematicPlacementManager manager = DataManager.getSchematicPlacementManager();
+                        manager.getAllPlacementsOfSchematic(this.widget.schematic).forEach(manager::markChunksForRebuild);
+                    }
+                };
+                if (this.widget.schematic.getMetadata().wasModifiedSinceSaved())
+                {
+                    fi.dy.masa.litematica.util.UxSafety.confirm(false, "litematica.gui.ux.safety.reload",
+                            () -> java.util.List.of(this.widget.schematic.getMetadata(),
+                                    this.widget.schematic.getMetadata().getTimeModified(),
+                                    this.widget.schematic.getMetadata().wasModifiedSinceSaved()),
+                            () -> SchematicHolder.getInstance().getAllSchematics().contains(this.widget.schematic),
+                            reload, this.widget.schematic.getMetadata().getName());
+                }
+                else reload.run();
+			}
+			else if (this.type == Type.UNLOAD)
+			{
+				SchematicHolder.getInstance().requestUnload(this.widget.schematic, this.widget.parent::refreshEntries);
+			}
         }
 
         public enum Type

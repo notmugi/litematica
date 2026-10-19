@@ -1,5 +1,6 @@
 package fi.dy.masa.litematica.gui;
 
+import javax.annotation.Nullable;
 import java.io.File;
 
 import fi.dy.masa.malilib.gui.GuiBase;
@@ -22,6 +23,7 @@ import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.gui.GuiMainMenu.ButtonListenerChangeMenu;
 import fi.dy.masa.litematica.gui.widgets.WidgetAreaSelectionBrowser;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
+import fi.dy.masa.litematica.selection.AreaSelection;
 import fi.dy.masa.litematica.selection.SelectionManager;
 import fi.dy.masa.litematica.selection.SelectionMode;
 import fi.dy.masa.litematica.util.FileType;
@@ -47,7 +49,7 @@ public class GuiAreaSelectionManager extends GuiListBase<DirectoryEntry, WidgetD
     @Override
     protected int getBrowserHeight()
     {
-        return this.height - 68;
+        return this.height - 78;
     }
 
     @Override
@@ -73,12 +75,19 @@ public class GuiAreaSelectionManager extends GuiListBase<DirectoryEntry, WidgetD
 
         ButtonListenerChangeMenu.ButtonType type = ButtonListenerChangeMenu.ButtonType.AREA_EDITOR;
         ButtonGeneric button = new ButtonGeneric(10, y, -1, 20, StringUtils.translate(type.getLabelKey()), type.getIcon());
-        this.addButton(button, new ButtonListenerChangeMenu(type, this));
+        button.setEnabled(this.selectionManager.getCurrentNormalSelectionId() != null &&
+                !DataManager.getSchematicProjectsManager().hasProjectOpen());
+        this.addButton(button, (b, mouseButton) -> this.openSelectionEditor(this.selectionManager.getCurrentNormalSelectionId()));
 
         // These are placed from right to left
         x = this.createButton(x, y, ButtonListener.ButtonType.UNSELECT);
         x = this.createButton(x, y, ButtonListener.ButtonType.FROM_PLACEMENT);
         x = this.createButton(x, y, ButtonListener.ButtonType.NEW_SELECTION);
+
+        String back = StringUtils.translate("litematica.gui.ux.back");
+        int backWidth = this.getStringWidth(back) + 10;
+        this.addButton(new ButtonGeneric(this.width - backWidth - 10, this.height - 26, backWidth, 20, back),
+                (b, mouseButton) -> this.closeGui(true));
 
         String currentSelection = this.selectionManager.getCurrentNormalSelectionId();
 
@@ -90,6 +99,7 @@ public class GuiAreaSelectionManager extends GuiListBase<DirectoryEntry, WidgetD
             {
                 currentSelection = FileNameUtils.getFileNameWithoutExtension(currentSelection.substring(len + 1));
                 String str = StringUtils.translate("litematica.gui.label.area_selection_manager.current_selection", currentSelection);
+                str = this.textRenderer.trimToWidth(str, Math.max(1, this.width - backWidth - 34));
                 int w = this.getStringWidth(str);
                 this.addLabel(10, this.height - 15, w, 14, 0xFFFFFFFF, str);
             }
@@ -155,6 +165,30 @@ public class GuiAreaSelectionManager extends GuiListBase<DirectoryEntry, WidgetD
         }
     }
 
+    public void openSelectionEditor(@Nullable String selectionId)
+    {
+        if (selectionId == null || DataManager.getSchematicProjectsManager().hasProjectOpen())
+        {
+            return;
+        }
+
+        AreaSelection selection = this.selectionManager.getOrLoadSelection(selectionId);
+
+        if (selection == null)
+        {
+            this.addMessage(MessageType.ERROR, "litematica.error.area_selection.failed_to_load");
+            return;
+        }
+
+        // Save and sub-region actions use the current selection, so editing must activate it too.
+        this.selectionManager.setCurrentSelection(selectionId);
+        if (this.selectionManager.getSelectionMode() != SelectionMode.NORMAL)
+        {
+            this.selectionManager.switchSelectionMode();
+        }
+        GuiSaveSelection.open(this);
+    }
+
     public SelectionManager getSelectionManager()
     {
         return this.selectionManager;
@@ -204,7 +238,7 @@ public class GuiAreaSelectionManager extends GuiListBase<DirectoryEntry, WidgetD
             }
             else if (this.type == ButtonType.UNSELECT)
             {
-                DataManager.getSelectionManager().setCurrentSelection(null);
+				DataManager.getSelectionManager().clearCurrentSelection();
                 this.gui.reCreateGuiElements();
             }
         }

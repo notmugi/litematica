@@ -19,20 +19,9 @@ public class GuiRenderLayer extends GuiRenderLayerEditBase
     {
         super.initGui();
 
-        int x = 10;
-        int y = 26;
-
-        x += this.createTabButton(x, y, -1, ConfigGuiTab.GENERIC);
-        x += this.createTabButton(x, y, -1, ConfigGuiTab.INFO_OVERLAYS);
-        x += this.createTabButton(x, y, -1, ConfigGuiTab.VISUALS);
-        x += this.createTabButton(x, y, -1, ConfigGuiTab.COLORS);
-        x += this.createTabButton(x, y, -1, ConfigGuiTab.HOTKEYS);
-        x += this.createTabButton(x, y, -1, ConfigGuiTab.RENDER_LAYERS);
-
-        x = 10;
-        y = 60;
-
-        this.createLayerEditControls(x, y, this.getLayerRange());
+        this.createLayerEditControls(10, 30, this.getLayerRange());
+        GuiMainMenu.action(this, this.width - 70, this.height - 26, 60, 20,
+                StringUtils.translate("litematica.gui.ux.back"), "litematica.gui.ux.back", () -> this.closeGui(true));
     }
 
     @Override
@@ -45,24 +34,6 @@ public class GuiRenderLayer extends GuiRenderLayerEditBase
     protected IGuiIcon getValueAdjustButtonIcon()
     {
         return Icons.BUTTON_PLUS_MINUS_16;
-    }
-
-    private int createTabButton(int x, int y, int width, ConfigGuiTab tab)
-    {
-        ButtonListenerTab listener = new ButtonListenerTab(tab);
-        boolean enabled = DataManager.getConfigGuiTab() != tab;
-        String label = tab.getDisplayName();
-
-        if (width < 0)
-        {
-            width = this.getStringWidth(label) + 10;
-        }
-
-        ButtonGeneric button = new ButtonGeneric(x, y, width, 20, label);
-        button.setEnabled(enabled);
-        this.addButton(button, listener);
-
-        return width + 2;
     }
 
     @Override

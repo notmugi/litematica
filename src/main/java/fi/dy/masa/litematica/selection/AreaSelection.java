@@ -243,6 +243,22 @@ public class AreaSelection
         return false;
     }
 
+    /** True only when there is geometry to clear, not merely an empty selection object. */
+    public boolean hasSelectionGeometry()
+    {
+        return this.explicitOrigin != null || this.subRegionBoxes.values().stream()
+                .anyMatch(box -> box.getPos1() != null || box.getPos2() != null);
+    }
+
+    /** Clear active geometry; Simple mode keeps an empty box for the next tool click. */
+    public void clearSelectionGeometry()
+    {
+        this.removeAllSubRegionBoxes();
+        this.currentBox = null;
+        this.setExplicitOrigin(null);
+        this.markDirty();
+    }
+
     public void removeAllSubRegionBoxes()
     {
         this.subRegionBoxes.clear();

@@ -1,5 +1,6 @@
 package fi.dy.masa.litematica.event;
 
+import fi.dy.masa.litematica.util.UxSafety;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.BlockPos;
@@ -60,6 +61,7 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
     @Override
     public boolean onKeyInput(int keyCode, int scanCode, int modifiers, boolean eventKeyState)
     {
+        if (!eventKeyState) UxSafety.released(keyCode);
         if (eventKeyState)
         {
             MinecraftClient mc = MinecraftClient.getInstance();
@@ -84,6 +86,7 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
     @Override
     public boolean onMouseClick(int mouseX, int mouseY, int eventButton, boolean eventButtonState)
     {
+        if (!eventButtonState) UxSafety.released(eventButton - 100);
         MinecraftClient mc = MinecraftClient.getInstance();
 
         // Tool enabled, and not in a GUI
@@ -119,6 +122,7 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
 
     private boolean handleMouseScroll(double dWheel, MinecraftClient mc)
     {
+        if (UxSafety.inputBlocked()) return true;
         boolean toolEnabled = Configs.Visuals.ENABLE_RENDERING.getBooleanValue() && Configs.Generic.TOOL_ITEM_ENABLED.getBooleanValue();
 
         if (toolEnabled == false || EntityUtils.hasToolItem(mc.player) == false)
@@ -239,7 +243,8 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
 
     private boolean handleAttackKey(MinecraftClient mc)
     {
-        if (mc.player != null && DataManager.getToolMode() == ToolMode.REBUILD && KeybindMulti.getTriggeredCount() == 0)
+        if (UxSafety.inputBlocked()) return true;
+        if (fi.dy.masa.malilib.util.GuiUtils.getCurrentScreen() == null && mc.player != null && DataManager.getToolMode() == ToolMode.REBUILD && KeybindMulti.getTriggeredCount() == 0)
         {
             if (Hotkeys.SCHEMATIC_EDIT_BREAK_DIRECTION.getKeybind().isKeybindHeld())
             {
@@ -264,7 +269,8 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
 
     private boolean handleUseKey(MinecraftClient mc)
     {
-        if (mc.player != null)
+        if (UxSafety.inputBlocked()) return true;
+        if (fi.dy.masa.malilib.util.GuiUtils.getCurrentScreen() == null && mc.player != null)
         {
             if (DataManager.getToolMode() == ToolMode.REBUILD)
             {

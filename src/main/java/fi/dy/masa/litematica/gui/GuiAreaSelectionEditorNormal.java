@@ -7,7 +7,6 @@ import net.minecraft.util.math.BlockPos;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.config.Hotkeys;
 import fi.dy.masa.litematica.data.DataManager;
-import fi.dy.masa.litematica.gui.GuiMainMenu.ButtonListenerChangeMenu;
 import fi.dy.masa.litematica.gui.widgets.WidgetListSelectionSubRegions;
 import fi.dy.masa.litematica.gui.widgets.WidgetSelectionSubRegion;
 import fi.dy.masa.litematica.materials.MaterialListAreaAnalyzer;
@@ -198,10 +197,10 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
             this.createButton(x, y, -1, ButtonListener.Type.ANALYZE_AREA);
         }
 
-        String label = StringUtils.translate("litematica.gui.button.change_menu.to_main_menu");
+        String label = StringUtils.translate("litematica.gui.ux.back");
         int buttonWidth = this.getStringWidth(label) + 10;
         button = new ButtonGeneric(this.width - buttonWidth - 10, y, buttonWidth, 20, label);
-        this.addButton(button, new ButtonListenerChangeMenu(ButtonListenerChangeMenu.ButtonType.MAIN_MENU, this.getParent()));
+        this.addButton(button, (b, mouseButton) -> this.closeGui(true));
     }
 
     protected void addRenderingDisabledWarning(int x, int y)
@@ -284,6 +283,8 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
 
         y += 2;
         BlockPos pos = corner == Corner.NONE ? this.selection.getEffectiveOrigin() : this.getBox().getPosition(corner);
+        boolean unset = pos == null;
+        if (unset) pos = BlockPos.ORIGIN;
         String text = "";
         ButtonListener.Type type = null;
 
@@ -305,7 +306,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
 
         GuiTextFieldInteger textField = new GuiTextFieldInteger(x + offset, y, width, 16, this.textRenderer);
         TextFieldListener listener = new TextFieldListener(coordType, corner, this);
-        textField.setText(text);
+        textField.setText(unset ? "" : text);
         this.addTextField(textField, listener);
 
         this.createCoordinateButton(x + offset + width + 4, y, corner, coordType, type);
@@ -355,6 +356,11 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         ButtonGeneric button = new ButtonGeneric(x, y, width, 20, label);
         ButtonListener listener = new ButtonListener(type, corner, null, this);
         this.addButton(button, listener);
+
+        if (type == ButtonListener.Type.CREATE_SCHEMATIC)
+        {
+            button.setEnabled(this.mc.player != null && this.selection != null && !PositionUtils.getValidBoxes(this.selection).isEmpty());
+        }
 
         if (type == ButtonListener.Type.CREATE_SCHEMATIC && projectsMode == false)
         {
@@ -492,7 +498,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
                 case CHANGE_SELECTION_MODE:
                     SelectionManager manager = DataManager.getSelectionManager();
                     manager.switchSelectionMode();
-                    manager.openEditGui(this.parent.getParent());
+                    GuiSaveSelection.open(this.parent.getParent());
                     return;
 
                 case CHANGE_CORNER_MODE:

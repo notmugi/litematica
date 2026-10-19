@@ -21,7 +21,7 @@ public class WidgetListLoadedSchematics extends WidgetListBase<LitematicaSchemat
     {
         super(x, y, width, height, selectionListener);
 
-        this.browserEntryHeight = 22;
+        this.browserEntryHeight = 44;
         this.widgetSearchBar = new WidgetSearchBar(x + 2, y + 4, width - 14, 14, 0, Icons.FILE_ICON_SEARCH, LeftRight.LEFT);
         this.browserEntriesOffsetY = this.widgetSearchBar.getHeight() + 3;
     }

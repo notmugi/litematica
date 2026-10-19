@@ -65,12 +65,13 @@ public final class SelectionEditorCheck
         check(screen() instanceof GuiAreaSelectionEditorNormal, "editor open");
         check(field(screen(), GuiAreaSelectionEditorNormal.class, "selection") == expected,
                 "editor must track the manager, not a stale selection");
-        button(StringUtils.translate("litematica.gui.button.change_menu.to_main_menu"));
+        button(StringUtils.translate("litematica.gui.ux.back"));
         button(StringUtils.translate("litematica.gui.button.clear_selection"));
     }
 
     public static GuiBase run() throws Exception
     {
+        fi.dy.masa.litematica.config.Configs.Generic.UX_WELCOME_DISMISSED.setBooleanValue(true);
         SelectionManager manager = DataManager.getSelectionManager();
         if (manager.getSelectionMode() != SelectionMode.NORMAL) manager.switchSelectionMode();
         manager.setCurrentSelection(null);
@@ -109,8 +110,8 @@ public final class SelectionEditorCheck
         checkEditor(manager.getCurrentSelection());
         toggle();
         checkEditor(null);
-        click(StringUtils.translate("litematica.gui.button.change_menu.to_main_menu"));
-        check(screen() instanceof GuiMainMenu, "Back returns to home");
+        click(StringUtils.translate("litematica.gui.ux.back"));
+        check(screen() == home, "Back returns to home");
         manager.openEditGui(home);
         checkEditor(null);
 
@@ -124,6 +125,29 @@ public final class SelectionEditorCheck
         checkEditor(manager.getCurrentSelection());
         toggle();
         checkEditor(manager.getCurrentSelection());
+        toggle();
+        AreaSelection simple = manager.getCurrentSelection();
+        simple.setSelectedSubRegionCornerPos(new BlockPos(2, 64, 3), fi.dy.masa.litematica.util.PositionUtils.Corner.CORNER_1);
+        simple.setSelectedSubRegionCornerPos(new BlockPos(6, 68, 9), fi.dy.masa.litematica.util.PositionUtils.Corner.CORNER_2);
+        screen().initGui();
+        click(StringUtils.translate("litematica.gui.button.clear_selection"));
+        checkEditor(simple);
+        check(!simple.hasSelectionGeometry() && !manager.hasSelectionToClear(), "Simple clear leaves no geometry");
+        check(simple.getSelectedSubRegionBox().getPos1() == null && simple.getSelectedSubRegionBox().getPos2() == null,
+                "Simple clear must not invent an origin box");
+        check(!AreaSelectionSimple.fromJson(simple.toJson()).hasSelectionGeometry(), "empty Simple JSON roundtrip");
+        toggle();
+        // Save browser gets a real footer Back button, outside its list area.
+        GuiBase editor = screen();
+        GuiSchematicSave save = new GuiSchematicSave();
+        save.setParent(editor);
+        GuiBase.openGui(save);
+        ButtonBase back = button(StringUtils.translate("litematica.gui.ux.back"));
+        check(back.getY() == fi.dy.masa.malilib.util.GuiUtils.getScaledWindowHeight() - 26, "save Back bottom aligned");
+        check(back.getX() + back.getWidth() == fi.dy.masa.malilib.util.GuiUtils.getScaledWindowWidth() - 10, "save Back right aligned");
+        check(80 + save.getBrowserHeight() <= back.getY(), "save list does not overlap Back");
+        click(StringUtils.translate("litematica.gui.ux.back"));
+        check(screen() == editor, "save Back returns to editor without saving");
         System.out.println("LITEUX SELECTION EDITOR PASS: empty, cancel, Add Box/Enter return, navigation, clear, mode switches, zero boxes");
         return screen();
     }

@@ -1,5 +1,6 @@
 package fi.dy.masa.litematica.gui.widgets;
 
+import fi.dy.masa.litematica.gui.PlacementUiContext;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +30,7 @@ public class WidgetSchematicPlacement extends WidgetListEntryBase<SchematicPlace
     public final SchematicPlacementManager manager;
     public final WidgetListSchematicPlacements parent;
     public final SchematicPlacement placement;
+    private final PlacementUiContext context;
     public final boolean isOdd;
     public int buttonsStartX;
 
@@ -39,6 +41,7 @@ public class WidgetSchematicPlacement extends WidgetListEntryBase<SchematicPlace
 
         this.parent = parent;
         this.placement = placement;
+        this.context = new PlacementUiContext(placement);
         this.isOdd = isOdd;
         this.manager = DataManager.getSchematicPlacementManager();
 
@@ -100,7 +103,7 @@ public class WidgetSchematicPlacement extends WidgetListEntryBase<SchematicPlace
 
         String name = this.placement.getName();
         String pre = this.placement.isEnabled() ? GuiBase.TXT_GREEN : GuiBase.TXT_RED;
-        this.drawString(this.x + 20, this.y + 7, 0xFFFFFFFF, pre + name, drawContext);
+        this.drawString(this.x + 20, this.y + 7, 0xFFFFFFFF, pre + this.textRenderer.trimToWidth(name, Math.max(1, this.buttonsStartX - this.x - 48)), drawContext);
 
         Icons icon;
 
@@ -182,6 +185,7 @@ public class WidgetSchematicPlacement extends WidgetListEntryBase<SchematicPlace
         @Override
         public void actionPerformedWithButton(ButtonBase button, int mouseButton)
         {
+            if (!this.widget.context.valid(this.widget.parent.getParentGui())) return;
             if (this.type == ButtonType.CONFIGURE)
             {
                 GuiPlacementConfiguration gui = new GuiPlacementConfiguration(this.widget.placement);

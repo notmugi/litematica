@@ -22,7 +22,6 @@ import fi.dy.masa.malilib.gui.widgets.WidgetFileBrowserBase.DirectoryEntry;
 import fi.dy.masa.malilib.gui.widgets.WidgetFileBrowserBase.DirectoryEntryType;
 import fi.dy.masa.malilib.interfaces.IStringConsumerFeedback;
 import fi.dy.masa.malilib.render.RenderUtils;
-import fi.dy.masa.malilib.util.GuiUtils;
 import fi.dy.masa.malilib.util.StringUtils;
 
 public class WidgetAreaSelectionEntry extends WidgetDirectoryEntry
@@ -182,15 +181,7 @@ public class WidgetAreaSelectionEntry extends WidgetDirectoryEntry
             }
             else if (this.type == ButtonType.CONFIGURE)
             {
-                AreaSelection selection = this.selectionManager.getOrLoadSelection(selectionId);
-
-                if (selection != null)
-                {
-                    GuiAreaSelectionEditorNormal gui = new GuiAreaSelectionEditorNormal(selection);
-                    gui.setParent(GuiUtils.getCurrentScreen());
-                    gui.setSelectionId(selectionId);
-                    GuiBase.openGui(gui);
-                }
+				this.widget.parent.getSelectionManagerGui().openSelectionEditor(selectionId);
             }
 
             this.widget.parent.refreshEntries();

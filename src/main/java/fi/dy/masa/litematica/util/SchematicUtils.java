@@ -60,6 +60,7 @@ import fi.dy.masa.litematica.world.WorldSchematic;
 public class SchematicUtils
 {
     private static long areaMovedTime;
+    private static java.util.function.BooleanSupplier pendingMove = () -> false;
 
     public static boolean saveSchematic(boolean inMemoryOnly)
     {
@@ -100,7 +101,7 @@ public class SchematicUtils
 
         if (placement != null)
         {
-            SchematicHolder.getInstance().removeSchematic(placement.getSchematic());
+            SchematicHolder.getInstance().requestUnload(placement.getSchematic(), () -> {});
         }
         else
         {
@@ -445,7 +446,36 @@ public class SchematicUtils
         return false;
     }
 
+    private static boolean confirmBulkEdit(BlockPos pos, String message, String change, Runnable action)
+    {
+        if (pos == null) return false;
+        SchematicPlacementManager manager = DataManager.getSchematicPlacementManager();
+        for (PlacementPart part : manager.getAllPlacementsTouchingChunk(pos))
+        {
+            if (part.getBox().containsPos(pos))
+            {
+                SchematicPlacement placement = part.getPlacement();
+                String selected = placement.getSelectedSubRegionName();
+                UxSafety.confirm(false, message, () -> UxSafety.placementState(placement),
+                        () -> manager.getAllSchematicsPlacements().contains(placement) &&
+                              manager.getAllPlacementsTouchingChunk(pos).stream()
+                                  .filter(p -> p.getBox().containsPos(pos)).findFirst()
+                                  .map(p -> p.getPlacement() == placement && p.getSubRegionName().equals(part.getSubRegionName())).orElse(false),
+                        action, placement.getName(), selected == null ? placement.getSubRegionCount() : 1,
+                        DataManager.getRenderLayerRange().getClampedValue(-30000000, DataManager.getRenderLayerRange().getAxis()),
+                        DataManager.getRenderLayerRange().getClampedValue(30000000, DataManager.getRenderLayerRange().getAxis()), change);
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean setSchematicBlockStates(BlockPos posStart, BlockPos posEnd, BlockState state)
+    {
+        return confirmBulkEdit(posStart, "litematica.gui.ux.safety.direction", posStart + " -> " + posEnd + ": " + state, () -> setSchematicBlockStatesConfirmed(posStart, posEnd, state));
+    }
+
+    private static boolean setSchematicBlockStatesConfirmed(BlockPos posStart, BlockPos posEnd, BlockState state)
     {
         if (posStart != null && posEnd != null)
         {
@@ -540,6 +570,17 @@ public class SchematicUtils
                                                                BiFunction<BlockState, BlockState, BlockState> blockModifier,
                                                                World world)
     {
+        return confirmBulkEdit(posStart, "litematica.gui.ux.safety.replace_all", stateOriginal + " -> " + stateNew,
+                () -> setAllIdenticalSchematicBlockStatesConfirmed(posStart, stateOriginal, stateNew, blockStateTest, blockModifier, world));
+    }
+
+    private static boolean setAllIdenticalSchematicBlockStatesConfirmed(BlockPos posStart,
+                                                               BlockState stateOriginal,
+                                                               BlockState stateNew,
+                                                               BiPredicate<BlockState, BlockState> blockStateTest,
+                                                               BiFunction<BlockState, BlockState, BlockState> blockModifier,
+                                                               World world)
+    {
         if (posStart != null)
         {
             SchematicPlacementManager manager = DataManager.getSchematicPlacementManager();
@@ -568,6 +609,11 @@ public class SchematicUtils
     }
 
     private static boolean setAllStatesToAirExcept(BlockPos pos, BlockState state, World world)
+    {
+        return confirmBulkEdit(pos, "litematica.gui.ux.safety.break_except", state.toString(), () -> setAllStatesToAirExceptConfirmed(pos, state, world));
+    }
+
+    private static boolean setAllStatesToAirExceptConfirmed(BlockPos pos, BlockState state, World world)
     {
         if (pos != null)
         {
@@ -848,6 +894,19 @@ public class SchematicUtils
 
     public static void moveCurrentlySelectedWorldRegionTo(BlockPos pos, MinecraftClient mc)
     {
+        AreaSelection area = DataManager.getSelectionManager().getCurrentSelection();
+        if (area == null || mc.player == null || !EntityUtils.isCreativeMode(mc.player))
+        {
+            moveCurrentlySelectedWorldRegionToConfirmed(pos, mc);
+            return;
+        }
+        UxSafety.confirm(true, "litematica.gui.ux.safety.move", () -> UxSafety.areaState(area),
+                () -> DataManager.getSelectionManager().getCurrentSelection() == area,
+                () -> moveCurrentlySelectedWorldRegionToConfirmed(pos, mc), area.getAllSubRegionBoxes().size(), pos);
+    }
+
+    private static void moveCurrentlySelectedWorldRegionToConfirmed(BlockPos pos, MinecraftClient mc)
+    {
         if (mc.player == null || EntityUtils.isCreativeMode(mc.player) == false)
         {
             InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.error.generic.creative_mode_only");
@@ -861,7 +920,7 @@ public class SchematicUtils
         // server -> client chunk/block syncing, otherwise a subsequent move
         // might wipe the area before the new blocks have arrived on the
         // client and thus the new move schematic would just be air.
-        if ((currentTime - areaMovedTime) < 400 ||
+        if (pendingMove.getAsBoolean() || (currentTime - areaMovedTime) < 400 ||
             scheduler.hasTask(TaskSaveSchematic.class) ||
             scheduler.hasTask(TaskDeleteArea.class) ||
             scheduler.hasTask(TaskPasteSchematicPerChunkCommand.class) ||
@@ -876,50 +935,121 @@ public class SchematicUtils
 
         if (area != null && area.getAllSubRegionBoxes().size() > 0)
         {
-            LitematicaSchematic schematic = LitematicaSchematic.createEmptySchematic(area, "");
+            // Keep queued stages tied to the approved source, not a mutable live selection.
+            AreaSelection source = area.copy();
+            var sourceState = source.toJson().deepCopy();
+            var world = mc.world;
+            var player = mc.player;
+            var connection = mc.getNetworkHandler();
+            var server = mc.getServer();
+            java.util.function.BooleanSupplier stillCurrent = () -> world != null && mc.world == world && mc.player == player &&
+                    mc.getNetworkHandler() == connection && mc.getServer() == server &&
+                    player != null && EntityUtils.isCreativeMode(player) && sm.getCurrentSelection() == area &&
+                    sourceState.equals(area.toJson());
+            // Scheduler.hasTask uses exact classes; guarded stages are subclasses.
+            java.util.concurrent.atomic.AtomicBoolean moving = new java.util.concurrent.atomic.AtomicBoolean(true);
+            pendingMove = () -> moving.get() && stillCurrent.getAsBoolean();
+            Runnable aborted = () -> {
+                moving.set(false);
+                mc.execute(() -> InfoUtils.showGuiOrInGameMessage(MessageType.WARNING, "litematica.gui.ux.safety.stale_move"));
+            };
+            LitematicaSchematic schematic = LitematicaSchematic.createEmptySchematic(source, "");
             LitematicaSchematic.SchematicSaveInfo info = new LitematicaSchematic.SchematicSaveInfo(false, false);
-            TaskSaveSchematic taskSave = new TaskSaveSchematic(schematic, area, info);
+            TaskSaveSchematic taskSave = new TaskSaveSchematic(schematic, source, info)
+            {
+                @Override
+                public boolean canExecute() { return stillCurrent.getAsBoolean() && super.canExecute(); }
+                @Override
+                public void stop()
+                {
+                    if (!this.finished) aborted.run();
+                    super.stop();
+                }
+            };
             taskSave.disableCompletionMessage();
             areaMovedTime = System.currentTimeMillis();
 
-            taskSave.setCompletionListener(() ->
+            taskSave.setCompletionListener(() -> mc.execute(() ->
             {
+                if (!stillCurrent.getAsBoolean())
+                {
+                    moving.set(false);
+                    InfoUtils.showGuiOrInGameMessage(MessageType.WARNING, "litematica.gui.ux.safety.stale_move");
+                    return;
+                }
                 SchematicPlacement placement = SchematicPlacement.createFor(schematic, pos, "-", true, true);
                 DataManager.getSchematicPlacementManager().addSchematicPlacement(placement, false);
 
-                TaskDeleteArea taskDelete = new TaskDeleteArea(area.getAllSubRegionBoxes(), true);
+                TaskDeleteArea taskDelete = new TaskDeleteArea(source.getAllSubRegionBoxes(), true)
+                {
+                    @Override
+                    public boolean canExecute() { return stillCurrent.getAsBoolean() && super.canExecute(); }
+                    @Override
+                    public void stop()
+                    {
+                        if (!this.finished) aborted.run();
+                        super.stop();
+                    }
+                };
                 taskDelete.disableCompletionMessage();
                 areaMovedTime = System.currentTimeMillis();
 
-                taskDelete.setCompletionListener(() ->
+                taskDelete.setCompletionListener(() -> mc.execute(() ->
                 {
+                    if (!stillCurrent.getAsBoolean())
+                    {
+                        moving.set(false);
+                        InfoUtils.showGuiOrInGameMessage(MessageType.WARNING, "litematica.gui.ux.safety.stale_move");
+                        return;
+                    }
                     TaskBase taskPaste;
                     LayerRange range = new LayerRange(SchematicWorldRefresher.INSTANCE);
 
                     if (mc.isIntegratedServerRunning())
                     {
-                        taskPaste = new TaskPasteSchematicPerChunkDirect(Collections.singletonList(placement), range, false);
+                        taskPaste = new TaskPasteSchematicPerChunkDirect(Collections.singletonList(placement), range, false)
+                        {
+                            @Override
+                            public boolean canExecute() { return stillCurrent.getAsBoolean() && super.canExecute(); }
+                            @Override
+                            public void stop()
+                            {
+                                if (!this.finished) aborted.run();
+                                super.stop();
+                            }
+                        };
                     }
                     else
                     {
-                        taskPaste = new TaskPasteSchematicPerChunkCommand(Collections.singletonList(placement), range, false);
+                        taskPaste = new TaskPasteSchematicPerChunkCommand(Collections.singletonList(placement), range, false)
+                        {
+                            @Override
+                            public boolean canExecute() { return stillCurrent.getAsBoolean() && super.canExecute(); }
+                            @Override
+                            public void stop()
+                            {
+                                if (!this.finished) aborted.run();
+                                super.stop();
+                            }
+                        };
                     }
 
                     taskPaste.disableCompletionMessage();
                     areaMovedTime = System.currentTimeMillis();
 
-                    taskPaste.setCompletionListener(() ->
+                    taskPaste.setCompletionListener(() -> mc.execute(() ->
                     {
+                        moving.set(false);
                         SchematicHolder.getInstance().removeSchematic(schematic);
-                        area.moveEntireSelectionTo(pos, false);
+                        if (stillCurrent.getAsBoolean()) area.moveEntireSelectionTo(pos, false);
                         areaMovedTime = System.currentTimeMillis();
-                    });
+                    }));
 
                     scheduler.scheduleTask(taskPaste, 1);
-                });
+                }));
 
                 scheduler.scheduleTask(taskDelete, 1);
-            });
+            }));
 
             scheduler.scheduleTask(taskSave, 1);
         }

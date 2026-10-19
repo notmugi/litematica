@@ -59,12 +59,24 @@ public class AreaSelectionSimple extends AreaSelection
         return false;
     }
 
+    @Override
+    public void clearSelectionGeometry()
+    {
+        this.createDefaultBoxIfNeeded();
+        Box box = this.getSelectedSubRegionBox();
+        box.setPos1(null);
+        box.setPos2(null);
+        box.setSelectedCorner(fi.dy.masa.litematica.util.PositionUtils.Corner.NONE);
+        this.setExplicitOrigin(null);
+        this.markDirty();
+    }
+
     private void createDefaultBoxIfNeeded()
     {
         if (this.subRegionBoxes.size() != 1)
         {
             this.subRegionBoxes.clear();
-            Box box = new Box(BlockPos.ORIGIN, BlockPos.ORIGIN, this.getName());
+            Box box = new Box(null, null, this.getName());
             this.subRegionBoxes.put(box.getName(), box);
             this.currentBox = box.getName();
         }

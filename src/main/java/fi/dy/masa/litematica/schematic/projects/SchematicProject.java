@@ -1,5 +1,6 @@
 package fi.dy.masa.litematica.schematic.projects;
 
+import fi.dy.masa.litematica.util.UxSafety;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.util.ArrayList;
@@ -168,6 +169,12 @@ public class SchematicProject
         return this.selection;
     }
 
+    public void clearSelectionGeometry()
+    {
+        this.getSelection().clearSelectionGeometry();
+        this.dirty = true;
+    }
+
     public SelectionMode getSelectionMode()
     {
         return this.selectionMode;
@@ -267,58 +274,40 @@ public class SchematicProject
 
     public void pasteToWorld()
     {
-        if (this.currentPlacement != null)
-        {
-            MinecraftClient mc = MinecraftClient.getInstance();
-
-            if (mc.player == null || EntityUtils.isCreativeMode(mc.player) == false)
-            {
-                InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.error.generic.creative_mode_only");
-                return;
-            }
-
-            this.cacheCurrentAreaFromPlacement();
-
-            PlacementDeletionMode mode = (PlacementDeletionMode) Configs.Generic.SCHEMATIC_VCS_DELETE_MODE.getOptionListValue();
-
-            if (mode == PlacementDeletionMode.ENTIRE_VOLUME)
-            {
-                ToolUtils.deleteSelectionVolumes(this.lastSeenArea, true, this::pasteCurrentPlacement, mc);
-            }
-            else
-            {
-                if (this.lastPastedVersion < 0 || this.lastPastedVersion >= this.versions.size())
-                {
-                    InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "No previous pasted version known, skipping delete");
-                    this.pasteCurrentPlacement();
-                    return;
-                }
-
-                /*
-                SchematicVersion version = this.versions.get(this.lastPastedVersion);
-                LitematicaSchematic schematic = LitematicaSchematic.createFromFile(this.directory, version.getFileName());
-
-                if (schematic != null)
-                {
-                    BlockPos areaPosition = this.origin.add(version.getAreaOffset());
-                    SchematicPlacement placement = new SchematicPlacement(schematic, areaPosition, version.getName(), true, false);
-                    ToolUtils.deleteBlocksByPlacement(placement, mode, this::pasteCurrentPlacement);
-                }
-                else
-                */
-                {
-                    this.pasteCurrentPlacement();
-                }
-            }
-        }
-    }
-
-    protected void pasteCurrentPlacement()
-    {
-        this.lastPastedVersion = this.currentVersionId;
-        this.dirty = true;
         MinecraftClient mc = MinecraftClient.getInstance();
-        DataManager.getSchematicPlacementManager().pastePlacementToWorld(this.currentPlacement, false, mc);
+        SchematicPlacement placement = this.currentPlacement;
+        if (placement == null) return;
+        if (mc.player == null || !EntityUtils.isCreativeMode(mc.player))
+        {
+            InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.error.generic.creative_mode_only");
+            return;
+        }
+        // Export is not a world paste: never delete the world before opening its file dialog.
+        if (Configs.Generic.PASTE_TO_MCFUNCTION.getBooleanValue())
+        {
+            DataManager.getSchematicPlacementManager().pastePlacementToWorld(placement, false, mc);
+            return;
+        }
+        boolean delete = Configs.Generic.SCHEMATIC_VCS_DELETE_MODE.getOptionListValue() == PlacementDeletionMode.ENTIRE_VOLUME;
+        AreaSelection area = AreaSelection.fromPlacement(placement);
+        int version = this.currentVersionId;
+        UxSafety.confirm(true, "litematica.gui.ux.safety.project_paste", () -> this.toJson().deepCopy(),
+                () -> DataManager.getSchematicProjectsManager().getCurrentProject() == this &&
+                        this.currentPlacement == placement && placement.isEnabled() &&
+                        DataManager.getSchematicPlacementManager().getAllSchematicsPlacements().contains(placement),
+                () -> {
+                    Runnable paste = DataManager.getSchematicPlacementManager().prepareProjectPaste(placement, mc);
+                    if (paste == null) return; // Validate paste prerequisites before deleting anything.
+                    ICompletionListener completion = UxSafety.checkedContinuation(() -> {
+                        paste.run();
+                        this.lastPastedVersion = version;
+                        this.dirty = true;
+                    });
+                    Runnable start = delete ? ToolUtils.prepareProjectDelete(area, completion, mc) : completion::onTaskCompleted;
+                    this.lastSeenArea = area;
+                    this.dirty = true;
+                    start.run();
+                }, this.getName(), version + 1, placement.getName(), area.getAllSubRegionBoxes().size(), delete, UxSafety.pasteSettings());
     }
 
     public void deleteLastSeenArea(MinecraftClient mc)

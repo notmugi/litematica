@@ -64,6 +64,23 @@ public class SchematicHolder
         }
     }
 
+    /** User unload only; internal move cleanup and disconnect must remain synchronous. */
+    public void requestUnload(LitematicaSchematic schematic, Runnable afterUnload)
+    {
+        Runnable unload = () -> { if (this.removeSchematic(schematic)) afterUnload.run(); };
+        if (!schematic.getMetadata().wasModifiedSinceSaved())
+        {
+            unload.run();
+            return;
+        }
+        fi.dy.masa.litematica.util.UxSafety.confirm(false, "litematica.gui.ux.safety.unload",
+                () -> java.util.List.of(schematic.getMetadata(), schematic.getMetadata().getTimeModified(),
+                        schematic.getMetadata().wasModifiedSinceSaved(),
+                        DataManager.getSchematicPlacementManager().getAllPlacementsOfSchematic(schematic).stream()
+                            .map(fi.dy.masa.litematica.util.UxSafety::placementState).toList()),
+                () -> this.schematics.contains(schematic), unload, schematic.getMetadata().getName());
+    }
+
     public boolean removeSchematic(LitematicaSchematic schematic)
     {
         if (this.schematics.remove(schematic))

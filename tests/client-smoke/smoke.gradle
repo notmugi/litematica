@@ -17,6 +17,7 @@ afterEvaluate {
                 source sourceSets.uxSmoke
                 runDir 'build/ux-smoke/run'
                 vmArg '-ea'
+                if (project.hasProperty('smokeGlfw')) vmArg '-Dorg.lwjgl.glfw.libname=' + project.property('smokeGlfw')
                 vmArg '-Djava.io.tmpdir=' + file('.work').absolutePath
                 programArgs '--width', '960', '--height', '720'
             }

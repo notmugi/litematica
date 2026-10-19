@@ -23,6 +23,20 @@ public class ToolUtils
 {
     public static void fillSelectionVolumes(MinecraftClient mc, BlockState state, @Nullable BlockState stateToReplace)
     {
+        AreaSelection area = DataManager.getSelectionManager().getCurrentSelection();
+        if (area == null || mc.player == null || !EntityUtils.isCreativeMode(mc.player))
+        {
+            fillSelectionVolumesConfirmed(mc, state, stateToReplace);
+            return;
+        }
+        UxSafety.confirm(true, "litematica.gui.ux.safety.fill", () -> UxSafety.areaState(area),
+                () -> DataManager.getSelectionManager().getCurrentSelection() == area,
+                () -> fillSelectionVolumesConfirmed(mc, state, stateToReplace),
+                UxSafety.boxCount(area), state, stateToReplace == null ? "*" : stateToReplace);
+    }
+
+    private static void fillSelectionVolumesConfirmed(MinecraftClient mc, BlockState state, @Nullable BlockState stateToReplace)
+    {
         if (mc.player != null && EntityUtils.isCreativeMode(mc.player))
         {
             final AreaSelection area = DataManager.getSelectionManager().getCurrentSelection();
@@ -84,6 +98,30 @@ public class ToolUtils
     public static void deleteSelectionVolumes(@Nullable final AreaSelection area, boolean removeEntities,
             @Nullable ICompletionListener listener, MinecraftClient mc)
     {
+        if (area == null || mc.player == null || !EntityUtils.isCreativeMode(mc.player))
+        {
+            deleteSelectionVolumesConfirmed(area, removeEntities, listener, mc);
+            return;
+        }
+        UxSafety.confirm(true, "litematica.gui.ux.safety.delete", () -> UxSafety.areaState(area), () -> true,
+                () -> deleteSelectionVolumesConfirmed(area, removeEntities, UxSafety.checkedContinuation(listener), mc),
+                UxSafety.boxCount(area), removeEntities, listener != null);
+    }
+
+    /** Prepared only inside a project approval, before the first destructive stage. */
+    public static Runnable prepareProjectDelete(AreaSelection area, ICompletionListener listener, MinecraftClient mc)
+    {
+        AreaSelection source = area.copy();
+        var valid = UxSafety.captureContext(() -> UxSafety.areaState(area), () -> true);
+        var ticket = new UxSafety.Ticket();
+        return () -> {
+            if (ticket.accept(true, valid)) deleteSelectionVolumesConfirmed(source, true, listener, mc);
+        };
+    }
+
+    private static void deleteSelectionVolumesConfirmed(@Nullable final AreaSelection area, boolean removeEntities,
+            @Nullable ICompletionListener listener, MinecraftClient mc)
+    {
         if (mc.player != null && EntityUtils.isCreativeMode(mc.player))
         {
             if (area == null)
@@ -141,6 +179,16 @@ public class ToolUtils
     }
 
     public static void deleteBlocksByPlacement(SchematicPlacement placement,
+                                               PlacementDeletionMode mode,
+                                               @Nullable ICompletionListener listener)
+    {
+        UxSafety.confirm(true, "litematica.gui.ux.safety.delete_placement", () -> UxSafety.placementState(placement),
+                () -> DataManager.getSchematicPlacementManager().getAllSchematicsPlacements().contains(placement),
+                () -> deleteBlocksByPlacementConfirmed(placement, mode, UxSafety.checkedContinuation(listener)),
+                placement.getName(), placement.getSubRegionCount(), mode);
+    }
+
+    private static void deleteBlocksByPlacementConfirmed(SchematicPlacement placement,
                                                PlacementDeletionMode mode,
                                                @Nullable ICompletionListener listener)
     {

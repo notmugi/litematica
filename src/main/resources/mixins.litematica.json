@@ -29,6 +29,7 @@
         "world.MixinWorldChunk"
     ],
     "client": [
+    "screen.MixinWidgetDropDownList",
         "block.MixinBlockStatesLoader",
         "client.MixinMinecraftClient",
         "easyplace.MixinClientPlayerInteractionManager_easyPlace",

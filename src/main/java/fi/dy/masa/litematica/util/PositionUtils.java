@@ -233,7 +233,7 @@ public class PositionUtils
     public static BlockPos getEnclosingAreaSize(Collection<Box> boxes)
     {
         Pair<BlockPos, BlockPos> pair = getEnclosingAreaCorners(boxes);
-        return pair.getRight().subtract(pair.getLeft()).add(1, 1, 1);
+        return pair != null ? pair.getRight().subtract(pair.getLeft()).add(1, 1, 1) : BlockPos.ORIGIN;
     }
 
     /**
@@ -259,7 +259,7 @@ public class PositionUtils
             getMinMaxCoords(posMin, posMax, box.getPos2());
         }
 
-        return Pair.of(posMin.toImmutable(), posMax.toImmutable());
+        return posMin.getX() > posMax.getX() ? null : Pair.of(posMin.toImmutable(), posMax.toImmutable());
     }
 
     private static void getMinMaxCoords(BlockPos.Mutable posMin, BlockPos.Mutable posMax, @Nullable BlockPos posToCheck)
