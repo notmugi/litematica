@@ -41,6 +41,8 @@ public class GuiMainMenu extends GuiBase
 
         this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.AREA_EDITOR);
         y += 22;
+        this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.AREA_SELECTION_BROWSER);
+        y += 22;
 
         SelectionMode mode = DataManager.getSelectionManager().getSelectionMode();
         String label = StringUtils.translate("litematica.gui.button.area_selection_mode", mode.getDisplayName());
