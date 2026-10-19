@@ -23,7 +23,7 @@ public class Smoke implements ClientModInitializer
     private GuiBase shown;
     private static final Path OUTPUT = Path.of("..", "screenshots");
     private final List<Supplier<GuiBase>> screens = List.of(
-        DropdownCheck::new, GuiMainMenu::new, GuiUxHelp::new, GuiToolModePicker::new, GuiGhosts::new,
+        () -> { try { return SelectionEditorCheck.run(); } catch (Exception e) { throw new RuntimeException(e); } }, DropdownCheck::new, GuiMainMenu::new, GuiUxHelp::new, GuiToolModePicker::new, GuiGhosts::new,
         () -> new GuiGhosts(true), GuiQuickPlace::new,
         () -> { DataManager.setConfigGuiTab(GuiConfigs.ConfigGuiTab.GENERIC); return new GuiConfigs(); },
         () -> { DataManager.setConfigGuiTab(GuiConfigs.ConfigGuiTab.HOTKEYS); return new GuiConfigs(); },

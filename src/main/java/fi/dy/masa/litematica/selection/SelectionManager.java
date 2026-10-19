@@ -777,15 +777,8 @@ public class SelectionManager
 
         if (this.getSelectionMode() == SelectionMode.NORMAL)
         {
-            if (selection != null)
-            {
-                return new GuiAreaSelectionEditorNormal(selection);
-            }
-            else
-            {
-                InfoUtils.showGuiOrActionBarMessage(MessageType.WARNING, "litematica.error.area_editor.open_gui.no_selection");
-                return null;
-            }
+            // Opening an editor must not create geometry or require a saved area.
+            return new GuiAreaSelectionEditorNormal(selection);
         }
         else
         {

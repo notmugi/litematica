@@ -25,3 +25,17 @@ at both scales: click open, header/last-row/scrollbar hover, exit on each of fou
 edges, typed filter and its visible bounds, cleanup/reopen, and category selection.
 Look for two `LITEUX DROPDOWN PASS` lines in the client log. These checks execute
 inside the render path; they do not merely inspect a screenshot of a closed menu.
+
+## Selection editor lifecycle regression
+
+`SelectionEditorCheck` clicks the actual Add Box button, cancels its dialog, then
+confirms via malilib's real Enter handler. It asserts that the returned editor
+tracks the active selection (not its former null model), contains exactly one new
+box, and retains navigation. It also checks Clear, Simple/Normal toggling, Back,
+reopening, and a named area with zero boxes at both GUI scales. The second box in
+the clear case is seeded through the selection model; there is no world/player in
+this test, so this is not a tool-click or in-world save test.
+
+The pre-fix code fails this test on stale editor identity after Add Box; it also
+fails the Simple-mode navigation assertion. Test selections stay in the isolated
+development game directory, never a user's instance.

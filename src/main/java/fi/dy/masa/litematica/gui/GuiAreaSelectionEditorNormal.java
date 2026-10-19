@@ -35,7 +35,7 @@ import fi.dy.masa.litematica.util.SchematicUtils;
 public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSelectionSubRegion, WidgetListSelectionSubRegions>
                                           implements ISelectionListener<String>
 {
-    protected final AreaSelection selection;
+    @Nullable protected AreaSelection selection;
     protected GuiTextFieldGeneric textFieldSelectionName;
     protected WidgetCheckBox checkBoxOrigin;
     protected WidgetCheckBox checkBoxCorner1;
@@ -72,6 +72,20 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
     @Override
     public void initGui()
     {
+        // Dialogs return to this same screen. Refresh its model BEFORE initializing
+        // the list: Add Box and Clear can change the manager's active selection.
+        // A sub-region editor deliberately owns a particular box instead.
+        if (!(this instanceof GuiAreaSelectionEditorSubRegion))
+        {
+            SelectionManager manager = DataManager.getSelectionManager();
+            AreaSelection current = manager.getCurrentSelection();
+            this.selectionId = manager.getCurrentSelectionId();
+            if (this.selection != current)
+            {
+                this.selection = current;
+                this.reCreateListWidget();
+            }
+        }
         super.initGui();
 
         if (this.selection != null)
@@ -88,10 +102,12 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
             int by = 24;
             bx += this.createButton(bx, by, -1, ButtonListener.Type.CHANGE_SELECTION_MODE) + 4;
             bx += this.createButton(bx, by, -1, ButtonListener.Type.CREATE_SUB_REGION) + 4;
-            this.addLabel(bx + 6, by, this.getScreenWidth() - bx - 26, 20, 0xFFFFAA00,
+            this.addLabel(12, by + 26, this.getScreenWidth() - 24, 20, 0xFFCCCCCC,
                     StringUtils.translate("litematica.error.area_editor.no_selection"));
-            this.addNavigationButtons();
         }
+
+        // Navigation is required in both empty and populated editors (and Simple).
+        this.addNavigationButtons();
     }
 
     protected void createSelectionEditFields()
@@ -636,15 +652,9 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         @Override
         public boolean setString(String string)
         {
-            boolean success = DataManager.getSelectionManager().createNewSubRegionIfDoesntExist(string, this.gui.mc, this.gui);
-
-            // If the editor was empty (no selection), reopen it so it shows the new selection.
-            if (success && this.gui.selection == null)
-            {
-                GuiSaveSelection.open(this.gui.getParent());
-            }
-
-            return success;
+            // GuiTextInput opens its parent AFTER this callback returns. Do not open
+            // another screen here; the parent's initGui refreshes the selection/list.
+            return DataManager.getSelectionManager().createNewSubRegionIfDoesntExist(string, this.gui.mc, this.gui);
         }
     }
 
@@ -716,6 +726,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
     @Override
     public void onSelectionChange(String entry)
     {
+        if (this.selection == null) return;
         if (entry != null && entry.equals(this.selection.getCurrentSubRegionBoxName()))
         {
             this.selection.setSelectedSubRegionBox(null);
